@@ -1,4 +1,5 @@
-import { marketplaceSearchUrl } from "@src/shared/query";
+import { dashboardView } from "@src/content/dashboard";
+import { bindFloat } from "@src/content/float";
 import type { ExactSearchState } from "@src/shared/types";
 
 const ROOT_ID = "fbx-exact-root";
@@ -12,19 +13,52 @@ export function ensureOverlay(): HTMLElement {
   const root = document.createElement("div");
   root.id = ROOT_ID;
   root.innerHTML = `
-    <div class="fbx-exact-bar">
-      <div class="fbx-exact-copy">
-        <strong>Smart Search</strong>
-        <span data-fbx="status">Waiting for a Marketplace search.</span>
+    <div class="fbx-exact-shell">
+      <div class="fbx-exact-bar">
+        <div class="fbx-exact-head" data-fbx="handle">
+          <span class="fbx-exact-grip" aria-hidden="true"></span>
+          <strong>Smart Search</strong>
+          <span class="fbx-exact-live" data-fbx="live">Ready</span>
+          <label class="fbx-exact-toggle" title="Turn filter on or off">
+            <input type="checkbox" data-fbx="enabled" checked />
+          </label>
+        </div>
+        <div class="fbx-exact-query">
+          <span>Search</span>
+          <b data-fbx="query">No Marketplace search yet</b>
+        </div>
+        <div class="fbx-exact-meter-row">
+          <span data-fbx="match">No results yet</span>
+          <div class="fbx-exact-meter" aria-hidden="true">
+            <div class="fbx-exact-meter-fill" data-fbx="meter"></div>
+          </div>
+        </div>
+        <div class="fbx-exact-stats">
+          <div class="fbx-exact-stat" data-kind="shown">
+            <b data-fbx="shown">0</b>
+            <span>Visible</span>
+          </div>
+          <div class="fbx-exact-stat" data-kind="hidden">
+            <b data-fbx="hidden">0</b>
+            <span>Hidden</span>
+          </div>
+          <div class="fbx-exact-stat" data-kind="ads">
+            <b data-fbx="ads">0</b>
+            <span>Ads</span>
+          </div>
+        </div>
+        <p class="fbx-exact-note" data-fbx="status" role="status">Search on Marketplace first.</p>
+        <div class="fbx-exact-modes" role="group" aria-label="Match style">
+          <label class="fbx-exact-mode">
+            <input type="checkbox" data-fbx="substring" checked />
+            <span>Contains</span>
+          </label>
+          <label class="fbx-exact-mode">
+            <input type="checkbox" data-fbx="exact" />
+            <span>Whole word</span>
+          </label>
+        </div>
       </div>
-      <form class="fbx-exact-form" data-fbx="form">
-        <input type="search" name="q" placeholder="Every word must be in the title or description" data-fbx="input" />
-        <button type="submit">Search</button>
-      </form>
-      <label class="fbx-exact-toggle">
-        <input type="checkbox" data-fbx="enabled" checked />
-        On
-      </label>
     </div>
   `;
   document.documentElement.appendChild(root);
@@ -34,54 +68,75 @@ export function ensureOverlay(): HTMLElement {
 export function bindOverlay(
   root: HTMLElement,
   handlers: {
-    onSearch: (query: string) => void;
     onToggle: (enabled: boolean) => void;
+    onSubstring: (substring: boolean) => void;
   }
 ): void {
-  const form = root.querySelector<HTMLFormElement>("[data-fbx=form]");
-  const input = root.querySelector<HTMLInputElement>("[data-fbx=input]");
   const enabled = root.querySelector<HTMLInputElement>("[data-fbx=enabled]");
-
-  form?.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const query = (input?.value || "").trim();
-    if (query) {
-      handlers.onSearch(query);
-    }
-  });
+  const substring = root.querySelector<HTMLInputElement>("[data-fbx=substring]");
+  const exact = root.querySelector<HTMLInputElement>("[data-fbx=exact]");
 
   enabled?.addEventListener("change", () => {
     handlers.onToggle(Boolean(enabled.checked));
   });
+
+  substring?.addEventListener("change", () => {
+    const next = Boolean(substring.checked);
+    if (exact) {
+      exact.checked = !next;
+    }
+    handlers.onSubstring(next);
+  });
+
+  exact?.addEventListener("change", () => {
+    const next = !exact.checked;
+    if (substring) {
+      substring.checked = next;
+    }
+    exact.checked = !next;
+    handlers.onSubstring(next);
+  });
+
+  bindFloat(root);
+}
+
+function setText(root: HTMLElement, key: string, value: string): void {
+  const node = root.querySelector(`[data-fbx=${key}]`);
+  if (node) {
+    node.textContent = value;
+  }
 }
 
 export function renderOverlay(root: HTMLElement, state: ExactSearchState): void {
-  const status = root.querySelector("[data-fbx=status]");
-  const input = root.querySelector<HTMLInputElement>("[data-fbx=input]");
+  const view = dashboardView(state);
   const enabled = root.querySelector<HTMLInputElement>("[data-fbx=enabled]");
+  const substring = root.querySelector<HTMLInputElement>("[data-fbx=substring]");
+  const exact = root.querySelector<HTMLInputElement>("[data-fbx=exact]");
+  const live = root.querySelector("[data-fbx=live]");
+  const meter = root.querySelector<HTMLElement>("[data-fbx=meter]");
 
-  if (input && input.value !== state.query) {
-    input.value = state.query;
-  }
   if (enabled) {
     enabled.checked = state.enabled;
   }
-  if (!status) {
-    return;
+  if (substring) {
+    substring.checked = state.substring;
+  }
+  if (exact) {
+    exact.checked = !state.substring;
+  }
+  if (live) {
+    live.setAttribute("data-live", view.live);
+  }
+  if (meter) {
+    meter.style.width = `${view.matchPct}%`;
   }
 
-  if (!state.query) {
-    status.textContent = "Use Marketplace search. Items stay only if every word is in the title or description.";
-    return;
-  }
-  if (!state.enabled) {
-    status.textContent = `Filter off. Facebook results for "${state.query}" are unchanged.`;
-    return;
-  }
-
-  status.textContent = `${state.shown} exact matches kept, ${state.hidden} hidden, ${state.adsHidden} ads hidden.`;
-}
-
-export function goToMarketplaceSearch(query: string): void {
-  window.location.assign(marketplaceSearchUrl(window.location.origin, query));
+  root.dataset.fbxActive = view.active ? "1" : "0";
+  setText(root, "live", view.liveText);
+  setText(root, "query", view.queryText);
+  setText(root, "match", view.matchText);
+  setText(root, "shown", view.shown);
+  setText(root, "hidden", view.hidden);
+  setText(root, "ads", view.ads);
+  setText(root, "status", view.note);
 }

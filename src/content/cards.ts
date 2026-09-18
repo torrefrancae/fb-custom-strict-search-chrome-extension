@@ -1,4 +1,5 @@
 import { listingIdFromHref } from "@src/shared/listing";
+import { stripSearchNoise } from "@src/shared/match";
 
 const HIDDEN_CLASS = "fbx-exact-hidden";
 const ITEM_SELECTOR = 'a[href*="/marketplace/item/"]';
@@ -74,8 +75,9 @@ export function titleFromCard(root: HTMLElement): string {
 
 export function cardSearchText(root: HTMLElement): string {
   return textLines(root)
+    .map((line) => stripSearchNoise(line).trim())
     .filter((line) => {
-      if (PRICE_RE.test(line) && line.length < 28) {
+      if (!line) {
         return false;
       }
       if (DISTANCE_RE.test(line)) {

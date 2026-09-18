@@ -134,12 +134,16 @@ async function runFixture(): Promise<void> {
     });
 
     await page.waitForFunction(() => {
-      const status = document.querySelector("[data-fbx=status]")?.textContent || "";
+      const shown = document.querySelector("[data-fbx=shown]")?.textContent || "";
+      const hiddenCount = document.querySelector("[data-fbx=hidden]")?.textContent || "";
+      const match = document.querySelector("[data-fbx=match]")?.textContent || "";
       const hidden = [...document.querySelectorAll(".fbx-exact-hidden a")].map((node) =>
         (node as HTMLAnchorElement).getAttribute("href")
       );
       return (
-        status.includes("2 exact matches kept, 1 hidden") &&
+        shown === "2" &&
+        hiddenCount === "1" &&
+        match.includes("2 of 3 listings match") &&
         hidden.some((href) => href?.includes("222222222222"))
       );
     });

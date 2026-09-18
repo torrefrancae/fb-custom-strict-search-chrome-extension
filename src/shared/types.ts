@@ -7,6 +7,7 @@ export type ListingRecord = {
 
 export type ExactSearchState = {
   enabled: boolean;
+  substring: boolean;
   query: string;
   shown: number;
   hidden: number;

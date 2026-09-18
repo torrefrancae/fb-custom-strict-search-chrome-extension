@@ -13,9 +13,9 @@ function clearMarks(root: ParentNode): void {
   }
 }
 
-function wrapNode(node: Text, tokens: string[]): void {
+function wrapNode(node: Text, tokens: string[], substring: boolean): void {
   const text = node.nodeValue || "";
-  const ranges = findTokenRanges(text, tokens);
+  const ranges = findTokenRanges(text, tokens, substring);
   if (!ranges.length || !node.parentNode) {
     return;
   }
@@ -45,9 +45,9 @@ export function clearHighlights(root: ParentNode): void {
   clearMarks(root);
 }
 
-export function highlightQuery(root: HTMLElement, query: string): void {
+export function highlightQuery(root: HTMLElement, query: string, substring = true): void {
   const tokens = tokenize(query);
-  const key = tokens.join("|");
+  const key = `${substring ? "sub" : "ex"}|${tokens.join("|")}`;
   if (root.getAttribute("data-fbx-hl") === key) {
     return;
   }
@@ -73,7 +73,7 @@ export function highlightQuery(root: HTMLElement, query: string): void {
   }
 
   for (const node of nodes) {
-    wrapNode(node, tokens);
+    wrapNode(node, tokens, substring);
   }
   root.setAttribute("data-fbx-hl", key);
 }

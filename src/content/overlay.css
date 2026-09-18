@@ -1,77 +1,267 @@
 #fbx-exact-root {
   position: fixed;
-  top: 72px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 88px;
+  right: 16px;
   z-index: 2147483646;
-  width: min(920px, calc(100vw - 24px));
+  width: 328px;
+  min-width: 236px;
+  max-width: calc(100vw - 24px);
   pointer-events: none;
   font-family: Helvetica, Arial, sans-serif;
 }
 
-#fbx-exact-root .fbx-exact-bar {
+#fbx-exact-root.fbx-placed {
+  right: auto;
+}
+
+#fbx-exact-root.fbx-snap {
+  transition:
+    left 0.52s cubic-bezier(0.18, 1.82, 0.28, 1),
+    top 0.4s cubic-bezier(0.22, 1.25, 0.36, 1);
+}
+
+#fbx-exact-root .fbx-exact-shell {
   pointer-events: auto;
+}
+
+#fbx-exact-root .fbx-exact-bar {
   display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px 9px 8px;
   border-radius: 14px;
   background: #ffffff;
   color: #1c1e21;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-  border: 1px solid #d0d3d8;
+  box-shadow:
+    0 22px 54px rgba(0, 0, 0, 0.32),
+    0 8px 22px rgba(24, 119, 242, 0.24),
+    0 0 0 1px rgba(16, 16, 16, 0.08);
+  border: 1px solid #c5d4e8;
 }
 
-#fbx-exact-root .fbx-exact-copy {
+#fbx-exact-root[data-fbx-dock="1"] .fbx-exact-bar {
+  border-radius: 12px;
+}
+
+#fbx-exact-root.fbx-dragging .fbx-exact-bar {
+  transform: scale(1.03);
+  box-shadow:
+    0 28px 64px rgba(0, 0, 0, 0.36),
+    0 12px 28px rgba(24, 119, 242, 0.28);
+}
+
+#fbx-exact-root .fbx-exact-head {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 220px;
-  flex: 1;
+  align-items: center;
+  gap: 6px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
 }
 
-#fbx-exact-root .fbx-exact-copy strong {
-  font-size: 13px;
+#fbx-exact-root.fbx-dragging .fbx-exact-head {
+  cursor: grabbing;
+}
+
+#fbx-exact-root .fbx-exact-grip {
+  width: 10px;
+  height: 12px;
+  flex: 0 0 10px;
+  background: radial-gradient(circle, #bec3c9 1.15px, transparent 1.3px);
+  background-size: 5px 4px;
+}
+
+#fbx-exact-root .fbx-exact-head strong {
+  flex: 1;
+  font-size: 12px;
   color: #1877f2;
 }
 
-#fbx-exact-root .fbx-exact-copy span {
+#fbx-exact-root .fbx-exact-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #606770;
+  background: #f0f2f5;
+  border-radius: 999px;
+  padding: 2px 6px 2px 5px;
+}
+
+#fbx-exact-root .fbx-exact-live::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8d949e;
+}
+
+#fbx-exact-root .fbx-exact-live[data-live="ready"] {
+  color: #1877f2;
+  background: #e7f3ff;
+}
+
+#fbx-exact-root .fbx-exact-live[data-live="ready"]::before {
+  background: #1877f2;
+}
+
+#fbx-exact-root .fbx-exact-live[data-live="on"] {
+  color: #1a7f37;
+  background: #e6f4ea;
+}
+
+#fbx-exact-root .fbx-exact-live[data-live="on"]::before {
+  background: #31a24c;
+  box-shadow: 0 0 0 3px rgba(49, 162, 76, 0.16);
+}
+
+#fbx-exact-root .fbx-exact-query {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
+#fbx-exact-root .fbx-exact-query span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8d949e;
+}
+
+#fbx-exact-root .fbx-exact-query b {
   font-size: 12px;
+  line-height: 1.25;
+  color: #1c1e21;
+  overflow-wrap: anywhere;
+}
+
+#fbx-exact-root .fbx-exact-meter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#fbx-exact-root .fbx-exact-meter-row span {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1c1e21;
+}
+
+#fbx-exact-root .fbx-exact-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: #e4e6eb;
+  overflow: hidden;
+}
+
+#fbx-exact-root .fbx-exact-meter-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #42a5f5, #1877f2);
+}
+
+#fbx-exact-root .fbx-exact-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+#fbx-exact-root .fbx-exact-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 2px 5px;
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
+#fbx-exact-root .fbx-exact-stat b {
+  font-size: 16px;
+  line-height: 1;
+}
+
+#fbx-exact-root .fbx-exact-stat span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #8d949e;
+}
+
+#fbx-exact-root .fbx-exact-stat[data-kind="shown"] b {
+  color: #1877f2;
+}
+
+#fbx-exact-root .fbx-exact-stat[data-kind="hidden"] b {
+  color: #606770;
+}
+
+#fbx-exact-root .fbx-exact-stat[data-kind="ads"] b {
+  color: #c47d00;
+}
+
+#fbx-exact-root[data-fbx-active="0"] .fbx-exact-stat b,
+#fbx-exact-root[data-fbx-active="0"] .fbx-exact-meter-row span {
+  color: #8d949e;
+}
+
+#fbx-exact-root .fbx-exact-note {
+  margin: 0;
+  font-size: 10px;
   line-height: 1.35;
   color: #606770;
 }
 
-#fbx-exact-root .fbx-exact-form {
-  display: flex;
-  gap: 8px;
-  flex: 1.2;
+#fbx-exact-root .fbx-exact-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #f0f2f5;
 }
 
-#fbx-exact-root input[type="search"] {
-  flex: 1;
-  border: 1px solid #ccd0d5;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
-}
-
-#fbx-exact-root button {
-  background: #1877f2;
-  color: #ffffff;
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 700;
+#fbx-exact-root .fbx-exact-mode {
+  position: relative;
+  margin: 0;
   cursor: pointer;
+  user-select: none;
+}
+
+#fbx-exact-root .fbx-exact-mode input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#fbx-exact-root .fbx-exact-mode span {
+  display: block;
+  text-align: center;
+  font-size: 10px;
+  color: #606770;
+  border-radius: 7px;
+  padding: 5px 4px;
+}
+
+#fbx-exact-root .fbx-exact-mode:has(input:checked) span {
+  background: #ffffff;
+  color: #1877f2;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 #fbx-exact-root .fbx-exact-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  white-space: nowrap;
+  margin-left: 2px;
 }
 
 .fbx-exact-hidden {
@@ -93,9 +283,12 @@ mark.fbx-exact-mark {
   border-radius: 3px;
 }
 
-@media (max-width: 720px) {
-  #fbx-exact-root .fbx-exact-bar {
-    flex-direction: column;
-    align-items: stretch;
+@media (prefers-reduced-motion: reduce) {
+  #fbx-exact-root.fbx-snap {
+    transition: left 0.2s ease, top 0.2s ease;
+  }
+
+  #fbx-exact-root.fbx-dragging .fbx-exact-bar {
+    transform: none;
   }
 }

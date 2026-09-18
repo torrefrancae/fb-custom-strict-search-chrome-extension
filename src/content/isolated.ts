@@ -7,17 +7,17 @@ import {
   setCardHidden
 } from "@src/content/cards";
 import { clearHighlights, highlightQuery } from "@src/content/highlight";
-import {
-  bindOverlay,
-  ensureOverlay,
-  goToMarketplaceSearch,
-  renderOverlay
-} from "@src/content/overlay";
+import { bindOverlay, ensureOverlay, renderOverlay } from "@src/content/overlay";
 import { ListingStore } from "@src/content/store";
 import { extractListingsFromDocument } from "@src/shared/hydrate";
 import { listingMatchesQuery } from "@src/shared/match";
 import { isMarketplaceSearchPath, queryFromDocument } from "@src/shared/query";
-import { onEnabledChange, readEnabled, writeEnabled } from "@src/shared/settings";
+import {
+  onSettingsChange,
+  readSettings,
+  writeEnabled,
+  writeSubstring
+} from "@src/shared/settings";
 import { MESSAGE_SOURCE, type ExactSearchState, type PageMessage } from "@src/shared/types";
 
 const bootFlag = window as Window & { __fbxExactIsolated?: boolean };
@@ -30,6 +30,7 @@ function bootIsolated(): void {
 const store = new ListingStore();
 const overlay = ensureOverlay();
 let enabled = true;
+let substring = true;
 let timer = 0;
 let scriptCount = -1;
 
@@ -68,6 +69,7 @@ function applyFilter(): ExactSearchState {
     }
     return {
       enabled,
+      substring,
       query,
       shown: 0,
       hidden: 0,
@@ -90,10 +92,10 @@ function applyFilter(): ExactSearchState {
       pending += 1;
     }
 
-    const keep = listingMatchesQuery(title, description, query);
+    const keep = listingMatchesQuery(title, description, query, substring);
     setCardHidden(card.root, !keep);
     if (keep) {
-      highlightQuery(card.root, query);
+      highlightQuery(card.root, query, substring);
       shown += 1;
     } else {
       clearHighlights(card.root);
@@ -103,7 +105,7 @@ function applyFilter(): ExactSearchState {
 
   const adsHidden = setNoiseHidden(true);
   collapseEmptyTiles();
-  return { enabled, query, shown, hidden, pending, adsHidden };
+  return { enabled, substring, query, shown, hidden, pending, adsHidden };
 }
 
 function refresh(): void {
@@ -117,10 +119,14 @@ function scheduleRefresh(): void {
 }
 
 bindOverlay(overlay, {
-  onSearch: goToMarketplaceSearch,
   onToggle: (next) => {
     enabled = next;
     void writeEnabled(next);
+    refresh();
+  },
+  onSubstring: (next) => {
+    substring = next;
+    void writeSubstring(next);
     refresh();
   }
 });
@@ -138,16 +144,18 @@ window.addEventListener("message", (event: MessageEvent<PageMessage>) => {
   }
 });
 
-onEnabledChange((next) => {
-  enabled = next;
+onSettingsChange((next) => {
+  enabled = next.enabled;
+  substring = next.substring;
   refresh();
 });
 
 const observer = new MutationObserver(scheduleRefresh);
 observer.observe(document.documentElement, { childList: true, subtree: true });
 
-void readEnabled().then((value) => {
-  enabled = value;
+void readSettings().then((value) => {
+  enabled = value.enabled;
+  substring = value.substring;
   refresh();
 });
 

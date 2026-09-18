@@ -1,13 +1,21 @@
-import { readEnabled, writeEnabled } from "@src/shared/settings";
+import { readSettings, writeEnabled, writeSubstring } from "@src/shared/settings";
 
-const checkbox = document.getElementById("enabled") as HTMLInputElement | null;
+const enabledBox = document.getElementById("enabled") as HTMLInputElement | null;
+const substringBox = document.getElementById("substring") as HTMLInputElement | null;
 
-void readEnabled().then((enabled) => {
-  if (checkbox) {
-    checkbox.checked = enabled;
+void readSettings().then((settings) => {
+  if (enabledBox) {
+    enabledBox.checked = settings.enabled;
+  }
+  if (substringBox) {
+    substringBox.checked = settings.substring;
   }
 });
 
-checkbox?.addEventListener("change", () => {
-  void writeEnabled(Boolean(checkbox.checked));
+enabledBox?.addEventListener("change", () => {
+  void writeEnabled(Boolean(enabledBox.checked));
+});
+
+substringBox?.addEventListener("change", () => {
+  void writeSubstring(Boolean(substringBox.checked));
 });

@@ -1,10 +1,20 @@
-const DEFAULTS = { enabled: true };
+export type AppSettings = {
+  enabled: boolean;
+  substring: boolean;
+};
+
+const DEFAULTS: AppSettings = { enabled: true, substring: true };
 
 type ChromeStorage = {
   storage?: {
     local: {
-      get: (keys: typeof DEFAULTS) => Promise<typeof DEFAULTS>;
-      set: (value: typeof DEFAULTS) => Promise<void>;
+      get: (keys: AppSettings) => Promise<Partial<AppSettings>>;
+      set: (value: Partial<AppSettings>) => Promise<void>;
+    };
+    onChanged?: {
+      addListener: (
+        cb: (changes: Record<string, { newValue?: boolean }>, area: string) => void
+      ) => void;
     };
   };
 };
@@ -13,14 +23,21 @@ function chromeApi(): ChromeStorage | undefined {
   return (globalThis as { chrome?: ChromeStorage }).chrome;
 }
 
-export async function readEnabled(): Promise<boolean> {
+export async function readSettings(): Promise<AppSettings> {
   const local = chromeApi()?.storage?.local;
   if (!local) {
-    return true;
+    return { ...DEFAULTS };
   }
 
   const stored = await local.get(DEFAULTS);
-  return stored.enabled !== false;
+  return {
+    enabled: stored.enabled !== false,
+    substring: stored.substring !== false
+  };
+}
+
+export async function readEnabled(): Promise<boolean> {
+  return (await readSettings()).enabled;
 }
 
 export async function writeEnabled(enabled: boolean): Promise<void> {
@@ -28,28 +45,21 @@ export async function writeEnabled(enabled: boolean): Promise<void> {
   if (!local) {
     return;
   }
-
   await local.set({ enabled });
 }
 
-export function onEnabledChange(listener: (enabled: boolean) => void): void {
-  const chromeRuntime = (
-    globalThis as {
-      chrome?: {
-        storage?: {
-          onChanged: {
-            addListener: (
-              cb: (changes: Record<string, { newValue?: boolean }>, area: string) => void
-            ) => void;
-          };
-        };
-      };
-    }
-  ).chrome;
+export async function writeSubstring(substring: boolean): Promise<void> {
+  const local = chromeApi()?.storage?.local;
+  if (!local) {
+    return;
+  }
+  await local.set({ substring });
+}
 
-  chromeRuntime?.storage?.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes.enabled) {
-      listener(changes.enabled.newValue !== false);
+export function onSettingsChange(listener: (settings: AppSettings) => void): void {
+  chromeApi()?.storage?.onChanged?.addListener((changes, area) => {
+    if (area === "local" && (changes.enabled || changes.substring)) {
+      void readSettings().then(listener);
     }
   });
 }

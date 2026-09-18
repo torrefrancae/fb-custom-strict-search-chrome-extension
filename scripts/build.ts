@@ -85,7 +85,7 @@ for (const size of [16, 32, 48, 128]) {
   writeFileSync(join(dist, "icons", `icon${size}.png`), png(size));
 }
 
-copyFileSync(join(root, "manifest.json"), join(dist, "manifest.json"));
+copyFileSync(join(src, "manifest.json"), join(dist, "manifest.json"));
 copyFileSync(join(src, "popup", "popup.html"), join(dist, "popup", "popup.html"));
 copyFileSync(join(src, "popup", "popup.css"), join(dist, "popup", "popup.css"));
 copyFileSync(join(src, "content", "overlay.css"), join(dist, "content", "overlay.css"));

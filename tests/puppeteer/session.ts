@@ -16,15 +16,44 @@ const wantShots = flags.has("--screenshots") || flags.has("--html-report");
 type Shot = { name: string; title: string; png: Buffer };
 const shots: Shot[] = [];
 
-async function snap(page: Page, name: string, title: string): Promise<void> {
+async function snap(
+  page: Page,
+  name: string,
+  title: string,
+  clip?: { x: number; y: number; width: number; height: number }
+): Promise<void> {
   if (!wantShots) {
     return;
   }
   shots.push({
     name,
     title,
-    png: Buffer.from(await page.screenshot({ fullPage: false, type: "png" }))
+    png: Buffer.from(await page.screenshot({ fullPage: false, type: "png", clip }))
   });
+}
+
+async function snapPanel(page: Page, name: string, title: string): Promise<void> {
+  const clip = await page.evaluate(() => {
+    const node = document.getElementById("fbx-exact-root");
+    if (!node) {
+      return null;
+    }
+    const box = node.getBoundingClientRect();
+    const pad = 10;
+    const x = Math.max(0, Math.floor(box.x - pad));
+    const y = Math.max(0, Math.floor(box.y - pad));
+    return {
+      x,
+      y,
+      width: Math.min(window.innerWidth - x, Math.ceil(box.width + pad * 2)),
+      height: Math.min(window.innerHeight - y, Math.ceil(box.height + pad * 2))
+    };
+  });
+  if (clip && clip.width > 8 && clip.height > 8) {
+    await snap(page, name, title, clip);
+    return;
+  }
+  await snap(page, name, title);
 }
 
 const version = await fetch("http://127.0.0.1:9333/json/version").then((res) => res.json()) as {
@@ -71,6 +100,11 @@ const stats = await page.evaluate(() => {
     (node.textContent || "").trim()
   );
   const status = document.querySelector("[data-fbx=status]")?.textContent || "";
+  const match = document.querySelector("[data-fbx=match]")?.textContent || "";
+  const queryText = document.querySelector("[data-fbx=query]")?.textContent || "";
+  const shownText = document.querySelector("[data-fbx=shown]")?.textContent || "";
+  const hiddenText = document.querySelector("[data-fbx=hidden]")?.textContent || "";
+  const adsText = document.querySelector("[data-fbx=ads]")?.textContent || "";
   const hidden = document.querySelectorAll(".fbx-exact-hidden").length;
   const ads = document.querySelectorAll("[data-fbx-noise]").length;
   const visible = [...document.querySelectorAll('a[href*="/marketplace/item/"]')].filter(
@@ -93,6 +127,11 @@ const stats = await page.evaluate(() => {
   ).size;
   return {
     status,
+    match,
+    queryText,
+    shownText,
+    hiddenText,
+    adsText,
     hidden,
     ads,
     marks: marks.slice(0, 12),
@@ -109,6 +148,22 @@ const stats = await page.evaluate(() => {
 
 console.log("session-stats", JSON.stringify(stats, null, 2));
 await snap(page, `session-${querySlug}`, `Logged-in ${query} search with packed exact matches`);
+await snap(page, `panel-${querySlug}-dock`, `Dashboard docked under the Marketplace search box`);
+await snapPanel(page, `dashboard-${querySlug}`, `Tiny search dashboard close-up`);
+
+const handleBox = await page.$eval("[data-fbx=handle]", (node) => {
+  const box = node.getBoundingClientRect();
+  return { x: box.x + 18, y: box.y + 8 };
+}).catch(() => null);
+if (handleBox) {
+  await page.mouse.move(handleBox.x, handleBox.y);
+  await page.mouse.down();
+  await page.mouse.move(36, 280, { steps: 16 });
+  await page.mouse.up();
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  await snap(page, `panel-${querySlug}-left`, `Dashboard flung to the left edge`);
+  await snapPanel(page, `dashboard-${querySlug}-left`, `Tiny search dashboard after snap`);
+}
 
 if (wantShots) {
   mkdirSync(reportDir, { recursive: true });
