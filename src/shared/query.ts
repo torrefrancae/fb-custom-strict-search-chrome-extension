@@ -15,6 +15,10 @@ export function queryFromDocument(doc: Document, href: string): string {
   ).trim();
 }
 
+export function isMarketplaceUrl(href: string): boolean {
+  return /marketplace/i.test(href);
+}
+
 export function isMarketplaceSearchPath(pathname: string): boolean {
   return pathname.includes("/marketplace/") && !pathname.includes("/marketplace/item/");
 }

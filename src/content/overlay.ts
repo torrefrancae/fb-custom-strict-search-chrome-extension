@@ -65,6 +65,11 @@ export function ensureOverlay(): HTMLElement {
   return root;
 }
 
+export function setOverlayVisible(root: HTMLElement, visible: boolean): void {
+  root.hidden = !visible;
+  root.dataset.fbxPage = visible ? "on" : "off";
+}
+
 export function bindOverlay(
   root: HTMLElement,
   handlers: {

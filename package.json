@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsx scripts/build.ts",
-    "test": "tsx --test tests/match.test.ts tests/listing.test.ts tests/float.test.ts tests/dashboard.test.ts",
+    "test": "tsx --test tests/match.test.ts tests/listing.test.ts tests/float.test.ts tests/dashboard.test.ts tests/query.test.ts",
     "test:browser": "tsx tests/puppeteer/run.ts",
     "test:session": "tsx tests/puppeteer/session.ts"
   },

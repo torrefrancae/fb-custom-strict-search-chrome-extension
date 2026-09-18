@@ -1,3 +1,7 @@
+#fbx-exact-root[hidden] {
+  display: none !important;
+}
+
 #fbx-exact-root {
   position: fixed;
   top: 88px;

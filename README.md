@@ -4,7 +4,7 @@ A Chrome extension (Manifest V3) that tightens Facebook Marketplace search.
 
 Facebook still runs the search. This extension then keeps a listing only when **every word you typed** appears in that item's title or description, in any order. Matching words are highlighted. Ads and "results from outside your search" are hidden. Remaining tiles pack into a normal grid with no empty holes.
 
-Search on Marketplace as usual. The floating panel is a tiny dashboard for that search. It does not have its own search box.
+Search on Marketplace as usual. The floating panel is a tiny dashboard for that search. It only appears when the page URL contains marketplace. It does not have its own search box.
 
 Search `honda cbr 150` and a Honda CBR without `150`, a CBR 150 without Honda, or a CBR 250 will drop out. With substring on, `ninja 250` also keeps `ninja z250sl`. A size like `48gb` also matches `48 GB`. Prices like `PHP250,000` do not count as a `250` match.
 

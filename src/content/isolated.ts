@@ -7,11 +7,11 @@ import {
   setCardHidden
 } from "@src/content/cards";
 import { clearHighlights, highlightQuery } from "@src/content/highlight";
-import { bindOverlay, ensureOverlay, renderOverlay } from "@src/content/overlay";
+import { bindOverlay, ensureOverlay, renderOverlay, setOverlayVisible } from "@src/content/overlay";
 import { ListingStore } from "@src/content/store";
 import { extractListingsFromDocument } from "@src/shared/hydrate";
 import { listingMatchesQuery } from "@src/shared/match";
-import { isMarketplaceSearchPath, queryFromDocument } from "@src/shared/query";
+import { isMarketplaceSearchPath, isMarketplaceUrl, queryFromDocument } from "@src/shared/query";
 import {
   onSettingsChange,
   readSettings,
@@ -47,8 +47,15 @@ function currentQuery(): string {
   return queryFromDocument(document, window.location.href);
 }
 
+function onMarketplacePage(): boolean {
+  return (
+    document.documentElement.hasAttribute("data-fbx-fixture") ||
+    isMarketplaceUrl(window.location.href)
+  );
+}
+
 function canFilter(): boolean {
-  if (!enabled || !currentQuery()) {
+  if (!enabled || !currentQuery() || !onMarketplacePage()) {
     return false;
   }
 
@@ -109,6 +116,13 @@ function applyFilter(): ExactSearchState {
 }
 
 function refresh(): void {
+  const visible = onMarketplacePage();
+  setOverlayVisible(overlay, visible);
+  if (!visible) {
+    revealAllCards();
+    setNoiseHidden(false);
+    return;
+  }
   hydrateFromPage();
   renderOverlay(overlay, applyFilter());
 }
@@ -130,6 +144,8 @@ bindOverlay(overlay, {
     refresh();
   }
 });
+
+window.addEventListener("popstate", scheduleRefresh);
 
 window.addEventListener("message", (event: MessageEvent<PageMessage>) => {
   if (event.source !== window || event.data?.source !== MESSAGE_SOURCE) {
