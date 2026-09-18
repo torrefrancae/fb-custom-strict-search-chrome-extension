@@ -1,0 +1,101 @@
+#fbx-exact-root {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  width: min(920px, calc(100vw - 24px));
+  pointer-events: none;
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+#fbx-exact-root .fbx-exact-bar {
+  pointer-events: auto;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #1c1e21;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  border: 1px solid #d0d3d8;
+}
+
+#fbx-exact-root .fbx-exact-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+  flex: 1;
+}
+
+#fbx-exact-root .fbx-exact-copy strong {
+  font-size: 13px;
+  color: #1877f2;
+}
+
+#fbx-exact-root .fbx-exact-copy span {
+  font-size: 12px;
+  line-height: 1.35;
+  color: #606770;
+}
+
+#fbx-exact-root .fbx-exact-form {
+  display: flex;
+  gap: 8px;
+  flex: 1.2;
+}
+
+#fbx-exact-root input[type="search"] {
+  flex: 1;
+  border: 1px solid #ccd0d5;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+#fbx-exact-root button {
+  background: #1877f2;
+  color: #ffffff;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#fbx-exact-root .fbx-exact-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.fbx-exact-hidden {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+}
+
+mark.fbx-exact-mark {
+  background: #fff3a3;
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+
+@media (max-width: 720px) {
+  #fbx-exact-root .fbx-exact-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

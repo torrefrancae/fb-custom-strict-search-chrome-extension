@@ -1,0 +1,21 @@
+{
+  "name": "chrome-extension-fb-smart-search",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome extension that keeps Facebook Marketplace results only when every search word appears in the title or description.",
+  "type": "module",
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "test": "tsx --test tests/match.test.ts tests/listing.test.ts",
+    "test:browser": "tsx tests/puppeteer/run.ts",
+    "test:session": "tsx tests/puppeteer/session.ts"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.11",
+    "@types/node": "^24.5.2",
+    "esbuild": "^0.25.9",
+    "puppeteer-core": "^24.22.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

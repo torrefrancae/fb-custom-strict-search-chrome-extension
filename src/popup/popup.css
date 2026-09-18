@@ -1,0 +1,36 @@
+body {
+  margin: 0;
+  font-family: Helvetica, Arial, sans-serif;
+  width: 280px;
+  color: #1c1e21;
+}
+
+main {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+}
+
+p,
+label,
+a {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+p {
+  margin: 0;
+  color: #606770;
+}
+
+a {
+  color: #1877f2;
+  font-weight: 700;
+  text-decoration: none;
+}
