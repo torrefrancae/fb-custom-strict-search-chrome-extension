@@ -2,28 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>FB Marketplace Smart Search</title>
+    <title>Facebook AI Agent 2.0</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <main>
-      <h1>FB Marketplace Smart Search</h1>
+      <h1>Facebook AI Agent 2.0</h1>
       <p>
-        Facebook still runs the search. A result stays visible only if every word
-        appears in its title or description, in any order. Matching words are
-        highlighted. If a word is missing from both, the item is hidden.
+        Search on the agent page. Marketplace opens in a background tab so this
+        extension can list matching items on its own screen.
       </p>
-      <label>
-        <input type="checkbox" id="enabled" checked />
-        Filter Marketplace results
-      </label>
-      <label>
-        <input type="checkbox" id="substring" checked />
-        Substring match (uncheck for exact words)
-      </label>
-      <a id="open" href="https://www.facebook.com/marketplace/" target="_blank" rel="noreferrer">
-        Open Marketplace
-      </a>
+      <button id="open-search" type="button">Open agent</button>
     </main>
     <script src="popup.js"></script>
   </body>

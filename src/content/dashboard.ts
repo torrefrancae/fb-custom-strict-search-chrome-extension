@@ -51,6 +51,8 @@ export function dashboardView(state: ExactSearchState): DashboardView {
     note = "None match yet. Still checking listing details.";
   } else if (active && state.shown === 0) {
     note = "None of these listings include every search word.";
+  } else if (active && state.exclude.trim()) {
+    note = "Only items with every search word stay visible. Don't-include words hide a listing.";
   } else if (active) {
     note = "Only items with every search word stay visible.";
   }

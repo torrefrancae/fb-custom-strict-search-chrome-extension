@@ -145,6 +145,40 @@
   overflow-wrap: anywhere;
 }
 
+#fbx-exact-root .fbx-exact-exclude {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+}
+
+#fbx-exact-root .fbx-exact-exclude span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8d949e;
+}
+
+#fbx-exact-root .fbx-exact-exclude input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccd0d5;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: #1c1e21;
+  background: #f7f9fc;
+}
+
+#fbx-exact-root .fbx-exact-exclude input:focus {
+  outline: none;
+  border-color: #1877f2;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(24, 119, 242, 0.16);
+}
+
 #fbx-exact-root .fbx-exact-meter-row {
   display: flex;
   flex-direction: column;

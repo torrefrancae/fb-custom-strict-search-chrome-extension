@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Facebook AI Agent 2.0</title>
+    <link rel="stylesheet" href="search.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand-row">
+        <h1>Facebook AI Agent</h1>
+        <p class="tagline">2.0 - search listings and inbox chats without leaving this page</p>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="Search scope">
+        <button type="button" class="tab" role="tab" data-mode="marketplace" aria-selected="true" id="tab-market">
+          Market list
+        </button>
+        <button type="button" class="tab" role="tab" data-mode="buying" aria-selected="false" id="tab-buying">
+          Buying chats
+        </button>
+        <button type="button" class="tab" role="tab" data-mode="selling" aria-selected="false" id="tab-selling">
+          Selling chats
+        </button>
+      </nav>
+      <form id="form" class="form" autocomplete="off">
+        <label class="field query">
+          <span class="sr-only">Search</span>
+          <input id="query" type="search" placeholder="Search - honda civic 2015" required />
+        </label>
+        <label class="field exclude">
+          <span class="sr-only">Don't include</span>
+          <input id="exclude" type="text" placeholder="Don't include - parts, wrecked" />
+        </label>
+        <label class="mode">
+          <input id="substring" type="checkbox" checked />
+          Contains
+        </label>
+        <button type="submit">Search</button>
+        <button id="focus-market" type="button" class="ghost">Harvest</button>
+      </form>
+      <div class="advanced-bar" id="advanced-bar" data-state="idle">
+        <div class="advanced-copy">
+          <span class="advanced-title">Advanced</span>
+          <span class="advanced-hint">Regex and price ranges filter collected results</span>
+        </div>
+        <label class="field regex">
+          <span class="sr-only">Match regex</span>
+          <input
+            id="match-regex"
+            type="text"
+            placeholder="Match regex - m(1|2)"
+            spellcheck="false"
+            autocomplete="off"
+          />
+        </label>
+        <label class="field prices">
+          <span class="sr-only">Price ranges</span>
+          <input
+            id="price-ranges"
+            type="text"
+            placeholder="Price ranges - 5000-10000, 5-10"
+            spellcheck="false"
+            autocomplete="off"
+          />
+        </label>
+        <p id="advanced-state" class="advanced-state">
+          Optional. Regex example: m(1|2). Price example: 5000-10000 and 5-10.
+        </p>
+      </div>
+      <div class="status-bar" id="status-bar" data-phase="idle">
+        <div class="status-phase">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="phase-label">Ready</span>
+        </div>
+        <div class="status-stats" aria-label="Result stats">
+          <span class="stat"><b id="stat-shown">0</b> shown</span>
+          <span class="stat"><b id="stat-total">0</b> collected</span>
+          <span class="stat"><b id="stat-match">0</b> match</span>
+        </div>
+        <p id="status" class="status-message" role="status">
+          Type a search. Results open in a detail modal.
+        </p>
+      </div>
+    </header>
+    <main id="results" class="results" aria-live="polite"></main>
+    <script src="search.js"></script>
+  </body>
+</html>

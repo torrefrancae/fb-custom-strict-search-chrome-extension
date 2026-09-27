@@ -1,24 +1,26 @@
 import { setNoiseHidden } from "@src/content/ads";
-import {
-  cardSearchText,
-  collapseEmptyTiles,
-  collectCards,
-  revealAllCards,
-  setCardHidden
-} from "@src/content/cards";
-import { clearHighlights, highlightQuery } from "@src/content/highlight";
-import { bindOverlay, ensureOverlay, renderOverlay, setOverlayVisible } from "@src/content/overlay";
+import { revealAllCards } from "@src/content/cards";
+import { startHarvestScroll } from "@src/content/harvest";
+import { listingsFromInbox } from "@src/content/inbox-listings";
+import { listingsFromCards } from "@src/content/page-listings";
 import { ListingStore } from "@src/content/store";
+import { fetchListingDetail } from "@src/shared/fetch-listing-detail";
 import { extractListingsFromDocument } from "@src/shared/hydrate";
-import { listingMatchesQuery } from "@src/shared/match";
-import { isMarketplaceSearchPath, isMarketplaceUrl, queryFromDocument } from "@src/shared/query";
+import { extractInboxThreads } from "@src/shared/inbox-extract";
+import { parseFacebookBody, usableListings } from "@src/shared/listing";
 import {
-  onSettingsChange,
-  readSettings,
-  writeEnabled,
-  writeSubstring
-} from "@src/shared/settings";
-import { MESSAGE_SOURCE, type ExactSearchState, type PageMessage } from "@src/shared/types";
+  inboxTabFromHref,
+  isHarvestablePath,
+  isMarketplaceItemPath,
+  isMarketplaceUrl
+} from "@src/shared/query";
+import {
+  MESSAGE_SOURCE,
+  RUNTIME_SOURCE,
+  type PageMessage,
+  type RuntimeMessage,
+  type SearchMode
+} from "@src/shared/types";
 
 const bootFlag = window as Window & { __fbxExactIsolated?: boolean };
 if (!bootFlag.__fbxExactIsolated) {
@@ -27,155 +29,171 @@ if (!bootFlag.__fbxExactIsolated) {
 }
 
 function bootIsolated(): void {
-const store = new ListingStore();
-const overlay = ensureOverlay();
-let enabled = true;
-let substring = true;
-let timer = 0;
-let scriptCount = -1;
+  const store = new ListingStore();
+  let stopScroll: (() => void) | null = null;
+  let timer = 0;
+  let scriptCount = -1;
+  let mode: SearchMode = "marketplace";
 
-function hydrateFromPage(): void {
-  const count = document.querySelectorAll("script").length;
-  if (count === scriptCount) {
-    return;
-  }
-  scriptCount = count;
-  store.merge(extractListingsFromDocument(document));
-}
-
-function currentQuery(): string {
-  return queryFromDocument(document, window.location.href);
-}
-
-function onMarketplacePage(): boolean {
-  return (
-    document.documentElement.hasAttribute("data-fbx-fixture") ||
-    isMarketplaceUrl(window.location.href)
-  );
-}
-
-function canFilter(): boolean {
-  if (!enabled || !currentQuery() || !onMarketplacePage()) {
-    return false;
-  }
-
-  if (document.documentElement.hasAttribute("data-fbx-fixture")) {
-    return true;
-  }
-
-  return isMarketplaceSearchPath(window.location.pathname);
-}
-
-function applyFilter(): ExactSearchState {
-  const query = currentQuery();
-  if (!canFilter()) {
+  function leaveFacebookAlone(): void {
+    document.getElementById("fbx-exact-root")?.remove();
     revealAllCards();
     setNoiseHidden(false);
-    for (const card of collectCards()) {
-      clearHighlights(card.root);
-    }
-    return {
-      enabled,
-      substring,
-      query,
-      shown: 0,
-      hidden: 0,
-      pending: 0,
-      adsHidden: 0
-    };
   }
 
-  let shown = 0;
-  let hidden = 0;
-  let pending = 0;
+  function currentMode(): SearchMode {
+    return inboxTabFromHref(window.location.href) || mode;
+  }
 
-  for (const card of collectCards()) {
-    const listing = store.get(card.id);
-    const title = listing?.title || card.title;
-    const description = [listing?.description, cardSearchText(card.root)]
-      .filter(Boolean)
-      .join(" ");
-    if (!listing?.description) {
-      pending += 1;
+  function onHarvestPage(): boolean {
+    return (
+      document.documentElement.hasAttribute("data-fbx-fixture") ||
+      (isMarketplaceUrl(window.location.href) && isHarvestablePath(window.location.pathname))
+    );
+  }
+
+  function onItemView(): boolean {
+    return isMarketplaceItemPath(window.location.pathname);
+  }
+
+  function publish(): void {
+    if (!onHarvestPage() && !onItemView()) {
+      return;
     }
+    const activeMode = currentMode();
+    const runtime = (globalThis as { chrome?: typeof chrome }).chrome?.runtime;
+    runtime?.sendMessage(
+      {
+        source: RUNTIME_SOURCE,
+        type: "harvest-listings",
+        listings: usableListings(store.all(), activeMode === "marketplace" ? "marketplace" : activeMode),
+        href: window.location.href,
+        mode: activeMode
+      },
+      () => undefined
+    );
+  }
 
-    const keep = listingMatchesQuery(title, description, query, substring);
-    setCardHidden(card.root, !keep);
-    if (keep) {
-      highlightQuery(card.root, query, substring);
-      shown += 1;
+  function hydrateScripts(activeMode: SearchMode): void {
+    const count = document.querySelectorAll("script").length;
+    if (count === scriptCount) {
+      return;
+    }
+    scriptCount = count;
+    if (activeMode === "marketplace") {
+      store.merge(extractListingsFromDocument(document));
+      return;
+    }
+    for (const script of document.querySelectorAll("script")) {
+      const text = script.textContent || "";
+      if (!/marketplace|commerce|MarketplaceThread|marketplace_inbox|marketplace_thread/i.test(text)) {
+        continue;
+      }
+      const parsed = parseFacebookBody(text);
+      if (parsed) {
+        store.merge(extractInboxThreads(parsed, activeMode));
+      }
+    }
+  }
+
+  function hydrateFromPage(): void {
+    const activeMode = currentMode();
+    if (activeMode === "buying" || activeMode === "selling") {
+      store.merge(listingsFromInbox(document, activeMode));
     } else {
-      clearHighlights(card.root);
-      hidden += 1;
+      store.merge(listingsFromCards());
     }
+    hydrateScripts(activeMode);
   }
 
-  const adsHidden = setNoiseHidden(true);
-  collapseEmptyTiles();
-  return { enabled, substring, query, shown, hidden, pending, adsHidden };
-}
-
-function refresh(): void {
-  const visible = onMarketplacePage();
-  setOverlayVisible(overlay, visible);
-  if (!visible) {
-    revealAllCards();
-    setNoiseHidden(false);
-    return;
+  function refresh(): void {
+    leaveFacebookAlone();
+    if (onItemView()) {
+      stopScroll?.();
+      stopScroll = null;
+      store.merge(extractListingsFromDocument(document));
+      publish();
+      return;
+    }
+    hydrateFromPage();
+    publish();
   }
-  hydrateFromPage();
-  renderOverlay(overlay, applyFilter());
-}
 
-function scheduleRefresh(): void {
-  window.clearTimeout(timer);
-  timer = window.setTimeout(refresh, 250);
-}
+  function scheduleRefresh(): void {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(refresh, 250);
+  }
 
-bindOverlay(overlay, {
-  onToggle: (next) => {
-    enabled = next;
-    void writeEnabled(next);
-    refresh();
-  },
-  onSubstring: (next) => {
-    substring = next;
-    void writeSubstring(next);
+  function setHarvest(on: boolean, nextMode: SearchMode = mode): void {
+    mode = nextMode;
+    window.postMessage({ source: MESSAGE_SOURCE, type: "set-mode", mode: nextMode }, "*");
+    stopScroll?.();
+    stopScroll = on && onHarvestPage() ? startHarvestScroll() : null;
     refresh();
   }
-});
 
-window.addEventListener("popstate", scheduleRefresh);
+  window.addEventListener("popstate", scheduleRefresh);
+  window.addEventListener("message", (event: MessageEvent<PageMessage>) => {
+    if (event.source !== window || event.data?.source !== MESSAGE_SOURCE) {
+      return;
+    }
+    if (event.data.type === "listings") {
+      store.merge(event.data.listings);
+      scheduleRefresh();
+    }
+    if (event.data.type === "navigate") {
+      if (onItemView()) {
+        setHarvest(false);
+      }
+      scheduleRefresh();
+    }
+  });
 
-window.addEventListener("message", (event: MessageEvent<PageMessage>) => {
-  if (event.source !== window || event.data?.source !== MESSAGE_SOURCE) {
-    return;
-  }
-  if (event.data.type === "listings") {
-    store.merge(event.data.listings);
-    scheduleRefresh();
-  }
-  if (event.data.type === "navigate") {
-    scheduleRefresh();
-  }
-});
+  const runtime = (globalThis as { chrome?: typeof chrome }).chrome?.runtime;
+  runtime?.onMessage.addListener((message: RuntimeMessage, _sender, sendResponse) => {
+    if (message?.source !== RUNTIME_SOURCE) {
+      return;
+    }
+    if (message.type === "start-harvest") {
+      store.clear();
+      scriptCount = -1;
+      setHarvest(true, message.mode || "marketplace");
+      return;
+    }
+    if (message.type === "fetch-listing-detail") {
+      void fetchListingDetail(message.href, message.id)
+        .then((listing) => {
+          if (listing) {
+            store.merge([listing]);
+            publish();
+          }
+          sendResponse({
+            source: RUNTIME_SOURCE,
+            type: "fetch-listing-detail-result",
+            id: message.id,
+            listing
+          });
+        })
+        .catch(() => {
+          sendResponse({
+            source: RUNTIME_SOURCE,
+            type: "fetch-listing-detail-result",
+            id: message.id,
+            listing: null
+          });
+        });
+      return true;
+    }
+  });
 
-onSettingsChange((next) => {
-  enabled = next.enabled;
-  substring = next.substring;
+  const observer = new MutationObserver(scheduleRefresh);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  leaveFacebookAlone();
   refresh();
-});
-
-const observer = new MutationObserver(scheduleRefresh);
-observer.observe(document.documentElement, { childList: true, subtree: true });
-
-void readSettings().then((value) => {
-  enabled = value.enabled;
-  substring = value.substring;
-  refresh();
-});
-
-setInterval(() => {
-  refresh();
-}, 1500);
+  window.setInterval(() => {
+    if (stopScroll) {
+      hydrateFromPage();
+      publish();
+    }
+  }, 1200);
 }

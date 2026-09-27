@@ -1,21 +1,11 @@
-import { readSettings, writeEnabled, writeSubstring } from "@src/shared/settings";
+const openSearch = document.getElementById("open-search");
 
-const enabledBox = document.getElementById("enabled") as HTMLInputElement | null;
-const substringBox = document.getElementById("substring") as HTMLInputElement | null;
-
-void readSettings().then((settings) => {
-  if (enabledBox) {
-    enabledBox.checked = settings.enabled;
+openSearch?.addEventListener("click", () => {
+  const runtime = (globalThis as { chrome?: typeof chrome }).chrome?.runtime;
+  const tabs = (globalThis as { chrome?: typeof chrome }).chrome?.tabs;
+  if (!runtime || !tabs) {
+    return;
   }
-  if (substringBox) {
-    substringBox.checked = settings.substring;
-  }
-});
-
-enabledBox?.addEventListener("change", () => {
-  void writeEnabled(Boolean(enabledBox.checked));
-});
-
-substringBox?.addEventListener("change", () => {
-  void writeSubstring(Boolean(substringBox.checked));
+  const url = runtime.getURL("search/search.html");
+  void tabs.create({ url, active: true });
 });

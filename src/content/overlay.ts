@@ -17,7 +17,7 @@ export function ensureOverlay(): HTMLElement {
       <div class="fbx-exact-bar">
         <div class="fbx-exact-head" data-fbx="handle">
           <span class="fbx-exact-grip" aria-hidden="true"></span>
-          <strong>Smart Search</strong>
+          <strong>Facebook AI Agent</strong>
           <span class="fbx-exact-live" data-fbx="live">Ready</span>
           <label class="fbx-exact-toggle" title="Turn filter on or off">
             <input type="checkbox" data-fbx="enabled" checked />
@@ -27,6 +27,16 @@ export function ensureOverlay(): HTMLElement {
           <span>Search</span>
           <b data-fbx="query">No Marketplace search yet</b>
         </div>
+        <label class="fbx-exact-exclude">
+          <span>Don't include</span>
+          <input
+            type="text"
+            data-fbx="exclude"
+            placeholder="parts, wrecked, sold"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </label>
         <div class="fbx-exact-meter-row">
           <span data-fbx="match">No results yet</span>
           <div class="fbx-exact-meter" aria-hidden="true">
@@ -75,11 +85,13 @@ export function bindOverlay(
   handlers: {
     onToggle: (enabled: boolean) => void;
     onSubstring: (substring: boolean) => void;
+    onExclude: (exclude: string) => void;
   }
 ): void {
   const enabled = root.querySelector<HTMLInputElement>("[data-fbx=enabled]");
   const substring = root.querySelector<HTMLInputElement>("[data-fbx=substring]");
   const exact = root.querySelector<HTMLInputElement>("[data-fbx=exact]");
+  const exclude = root.querySelector<HTMLInputElement>("[data-fbx=exclude]");
 
   enabled?.addEventListener("change", () => {
     handlers.onToggle(Boolean(enabled.checked));
@@ -102,6 +114,10 @@ export function bindOverlay(
     handlers.onSubstring(next);
   });
 
+  exclude?.addEventListener("input", () => {
+    handlers.onExclude(exclude.value);
+  });
+
   bindFloat(root);
 }
 
@@ -117,6 +133,7 @@ export function renderOverlay(root: HTMLElement, state: ExactSearchState): void 
   const enabled = root.querySelector<HTMLInputElement>("[data-fbx=enabled]");
   const substring = root.querySelector<HTMLInputElement>("[data-fbx=substring]");
   const exact = root.querySelector<HTMLInputElement>("[data-fbx=exact]");
+  const exclude = root.querySelector<HTMLInputElement>("[data-fbx=exclude]");
   const live = root.querySelector("[data-fbx=live]");
   const meter = root.querySelector<HTMLElement>("[data-fbx=meter]");
 
@@ -128,6 +145,9 @@ export function renderOverlay(root: HTMLElement, state: ExactSearchState): void 
   }
   if (exact) {
     exact.checked = !state.substring;
+  }
+  if (exclude && document.activeElement !== exclude) {
+    exclude.value = state.exclude;
   }
   if (live) {
     live.setAttribute("data-live", view.live);

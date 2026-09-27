@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { findTokenRanges, haystackHasAllTokens, listingMatchesQuery, tokenize } from "@src/shared/match";
+import {
+  compileMatchRegex,
+  findTokenRanges,
+  haystackHasAllTokens,
+  listingHitsExclude,
+  listingMatchesQuery,
+  listingMatchesRegex,
+  parseExcludeTerms,
+  tokenize
+} from "@src/shared/match";
 
 describe("findTokenRanges", () => {
   it("finds whole words in any order", () => {
@@ -114,6 +123,95 @@ describe("listingMatchesQuery", () => {
     assert.equal(
       listingMatchesQuery("MacBook Pro M3 Max 16/48", "18GB RAM 16GB unified", "macbook 48gb"),
       false
+    );
+  });
+
+  it("hides a matching listing when an exclude word is in the title", () => {
+    assert.equal(
+      listingMatchesQuery("Honda Civic parts 2015", "Clean title", "civic 2015", true, "parts"),
+      false
+    );
+  });
+
+  it("hides a matching listing when an exclude word is in the description", () => {
+    assert.equal(
+      listingMatchesQuery("Honda Civic 2015", "Wrecked, for rebuild", "civic 2015", true, "wrecked"),
+      false
+    );
+  });
+
+  it("hides a listing when any comma-separated exclude word matches", () => {
+    assert.equal(
+      listingMatchesQuery("Honda Civic 2015", "Sold as parts", "civic 2015", true, "wrecked, parts"),
+      false
+    );
+  });
+
+  it("keeps a listing when none of the exclude words appear", () => {
+    assert.equal(
+      listingMatchesQuery("Honda Civic 2015", "One owner, garage kept", "civic 2015", true, "parts, wrecked"),
+      true
+    );
+  });
+
+  it("treats an empty exclude field as no extra filter", () => {
+    assert.equal(listingMatchesQuery("Honda Civic 2015", "Clean papers", "civic 2015", true, ""), true);
+    assert.equal(listingMatchesQuery("Honda Civic 2015", "Clean papers", "civic 2015", true, "  ,  "), true);
+  });
+
+  it("treats one comma slot with two words as a phrase", () => {
+    assert.equal(
+      listingMatchesQuery("Honda Civic 2015", "One owner, garage kept", "civic 2015", true, "one owner"),
+      false
+    );
+    assert.equal(
+      listingMatchesQuery("Honda Civic 2015", "One owner, garage kept", "civic 2015", true, "one crash"),
+      true
+    );
+  });
+
+  it("uses substring mode on exclude words", () => {
+    assert.equal(
+      listingMatchesQuery("Honda Civic 2015 parts", "OEM set", "civic 2015", true, "part"),
+      false
+    );
+    assert.equal(
+      listingMatchesQuery("Honda Civic 2015 parts", "OEM set", "civic 2015", false, "part"),
+      true
+    );
+  });
+});
+
+describe("parseExcludeTerms", () => {
+  it("splits on commas and trims empty slots", () => {
+    assert.deepEqual(parseExcludeTerms("parts, wrecked, sold"), ["parts", "wrecked", "sold"]);
+    assert.deepEqual(parseExcludeTerms(" parts,,  wrecked ,"), ["parts", "wrecked"]);
+  });
+});
+
+describe("listingHitsExclude", () => {
+  it("returns false when there is nothing to exclude", () => {
+    assert.equal(listingHitsExclude("Honda Civic", "Clean title", ""), false);
+  });
+});
+
+describe("compileMatchRegex", () => {
+  it("compiles optional case-insensitive patterns and reports invalid ones", () => {
+    assert.equal(compileMatchRegex("").pattern, "");
+    assert.equal(compileMatchRegex("m(1|2)").error, "");
+    assert.equal(compileMatchRegex("m(1|2)").regex?.flags.includes("i"), true);
+    assert.match(compileMatchRegex("(").error, /./);
+    assert.equal(
+      listingMatchesRegex("MacBook Pro M2 16GB", "Apple silicon", "PHP 45,000", "", compileMatchRegex("m(1|2)")),
+      true
+    );
+    assert.equal(
+      listingMatchesRegex("MacBook Pro Intel 16GB", "older chip", "PHP 25,000", "", compileMatchRegex("m(1|2)")),
+      false
+    );
+    assert.equal(
+      listingMatchesRegex("MacBook", "has M1 inside note", "PHP 30,000", "", compileMatchRegex("m(1|2)")),
+      true
     );
   });
 });

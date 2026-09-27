@@ -137,15 +137,75 @@ export function haystackHasAllTokens(
   });
 }
 
+export function parseExcludeTerms(value: string): string[] {
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+export function listingHitsExclude(
+  title: string,
+  description: string,
+  exclude: string,
+  substring = true
+): boolean {
+  const hay = stripSearchNoise(`${title} ${description}`);
+  return parseExcludeTerms(exclude).some((term) =>
+    haystackHasAllTokens(hay, tokenize(term), substring)
+  );
+}
+
 export function listingMatchesQuery(
   title: string,
   description: string,
   query: string,
-  substring = true
+  substring = true,
+  exclude = ""
 ): boolean {
+  if (listingHitsExclude(title, description, exclude, substring)) {
+    return false;
+  }
   return haystackHasAllTokens(
     stripSearchNoise(`${title} ${description}`),
     tokenize(query),
     substring
   );
+}
+
+export type MatchRegexFilter = {
+  pattern: string;
+  regex: RegExp | null;
+  error: string;
+};
+
+export function compileMatchRegex(pattern: string): MatchRegexFilter {
+  const trimmed = pattern.trim();
+  if (!trimmed) {
+    return { pattern: "", regex: null, error: "" };
+  }
+  try {
+    return { pattern: trimmed, regex: new RegExp(trimmed, "i"), error: "" };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "bad pattern";
+    return { pattern: trimmed, regex: null, error: detail };
+  }
+}
+
+export function listingMatchesRegex(
+  title: string,
+  description: string,
+  price: string,
+  party: string,
+  filter: MatchRegexFilter
+): boolean {
+  if (!filter.pattern) {
+    return true;
+  }
+  if (!filter.regex) {
+    return false;
+  }
+  const hay = [title, description, price, party].filter(Boolean).join("\n");
+  filter.regex.lastIndex = 0;
+  return filter.regex.test(hay);
 }

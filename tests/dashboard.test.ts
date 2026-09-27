@@ -8,6 +8,7 @@ function state(partial: Partial<ExactSearchState>): ExactSearchState {
     enabled: true,
     substring: true,
     query: "ninja 300",
+    exclude: "",
     shown: 8,
     hidden: 14,
     pending: 0,
@@ -55,5 +56,10 @@ describe("dashboardView", () => {
   it("keeps the main note after some listings already match", () => {
     const view = dashboardView(state({ pending: 4 }));
     assert.match(view.note, /every search word/);
+  });
+
+  it("mentions Don't include when exclude words are set", () => {
+    const view = dashboardView(state({ exclude: "parts, wrecked" }));
+    assert.match(view.note, /Don't-include/);
   });
 });

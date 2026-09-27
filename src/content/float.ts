@@ -93,7 +93,7 @@ function dockRoot(root: HTMLElement): boolean {
 function isLockedTarget(target: EventTarget | null): boolean {
   return Boolean(
     target instanceof Element &&
-      target.closest("input, textarea, .fbx-exact-toggle, .fbx-exact-mode")
+      target.closest("input, textarea, .fbx-exact-toggle, .fbx-exact-mode, .fbx-exact-exclude")
   );
 }
 

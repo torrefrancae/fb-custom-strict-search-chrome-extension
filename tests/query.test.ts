@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isMarketplaceSearchPath, isMarketplaceUrl } from "@src/shared/query";
+import { threadIdFromHref } from "@src/shared/listing";
+import {
+  harvestUrl,
+  inboxTabFromHref,
+  isMarketplaceInboxPath,
+  isMarketplaceSearchPath,
+  isMarketplaceUrl,
+  marketplaceInboxUrl
+} from "@src/shared/query";
 
 describe("isMarketplaceUrl", () => {
   it("keeps Marketplace search and browse URLs", () => {
@@ -21,5 +29,28 @@ describe("isMarketplaceSearchPath", () => {
     assert.equal(isMarketplaceSearchPath("/marketplace/search/"), true);
     assert.equal(isMarketplaceSearchPath("/marketplace/"), true);
     assert.equal(isMarketplaceSearchPath("/marketplace/item/123"), false);
+  });
+});
+
+describe("marketplace inbox helpers", () => {
+  it("builds buying and selling inbox urls", () => {
+    assert.equal(
+      marketplaceInboxUrl("https://www.facebook.com", "buying"),
+      "https://www.facebook.com/marketplace/inbox?targetTab=BUYER"
+    );
+    assert.equal(
+      harvestUrl("https://www.facebook.com", "selling", "civic"),
+      "https://www.facebook.com/marketplace/inbox?targetTab=SELLER"
+    );
+  });
+
+  it("reads the inbox tab from the page href", () => {
+    assert.equal(inboxTabFromHref("https://www.facebook.com/marketplace/inbox?targetTab=BUYER"), "buying");
+    assert.equal(inboxTabFromHref("https://www.facebook.com/marketplace/inbox?targetTab=SELLER"), "selling");
+    assert.equal(isMarketplaceInboxPath("/marketplace/inbox"), true);
+  });
+
+  it("reads marketplace thread ids", () => {
+    assert.equal(threadIdFromHref("https://www.facebook.com/marketplace/t/100200300/?ref=inbox"), "100200300");
   });
 });

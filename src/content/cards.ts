@@ -1,5 +1,4 @@
 import { listingIdFromHref } from "@src/shared/listing";
-import { stripSearchNoise } from "@src/shared/match";
 
 const HIDDEN_CLASS = "fbx-exact-hidden";
 const ITEM_SELECTOR = 'a[href*="/marketplace/item/"]';
@@ -73,11 +72,17 @@ export function titleFromCard(root: HTMLElement): string {
   return lines[0] || "";
 }
 
-export function cardSearchText(root: HTMLElement): string {
+export function descriptionFromCard(root: HTMLElement, title: string): string {
+  const titleLower = title.trim().toLowerCase();
   return textLines(root)
-    .map((line) => stripSearchNoise(line).trim())
     .filter((line) => {
       if (!line) {
+        return false;
+      }
+      if (titleLower && line.toLowerCase() === titleLower) {
+        return false;
+      }
+      if (PRICE_RE.test(line) && line.length < 28) {
         return false;
       }
       if (DISTANCE_RE.test(line)) {
@@ -88,7 +93,7 @@ export function cardSearchText(root: HTMLElement): string {
       }
       return true;
     })
-    .join(" ");
+    .join(" · ");
 }
 
 export function collectCards(root: ParentNode = document): CardInfo[] {
