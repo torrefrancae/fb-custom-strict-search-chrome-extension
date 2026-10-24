@@ -5,7 +5,7 @@ export type AppSettings = {
   matchRegex: string;
   priceRanges: string;
   lastQuery: string;
-  lastMode: "marketplace" | "buying" | "selling";
+  lastMode: "facebook" | "marketplace" | "buying" | "selling";
 };
 
 const DEFAULTS: AppSettings = {
@@ -54,7 +54,10 @@ export async function readSettings(): Promise<AppSettings> {
     priceRanges: typeof stored.priceRanges === "string" ? stored.priceRanges : "",
     lastQuery: typeof stored.lastQuery === "string" ? stored.lastQuery : "",
     lastMode:
-      stored.lastMode === "buying" || stored.lastMode === "selling" || stored.lastMode === "marketplace"
+      stored.lastMode === "buying" ||
+      stored.lastMode === "selling" ||
+      stored.lastMode === "marketplace" ||
+      stored.lastMode === "facebook"
         ? stored.lastMode
         : "marketplace"
   };

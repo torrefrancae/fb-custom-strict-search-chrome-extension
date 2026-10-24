@@ -1,5 +1,7 @@
 import { extractListings, parseFacebookBody } from "@src/shared/listing";
+import { extractFacebookPosts } from "@src/shared/facebook-extract";
 import { extractInboxThreads } from "@src/shared/inbox-extract";
+import { modeFromHref } from "@src/shared/query";
 import { MESSAGE_SOURCE, type ListingRecord, type SearchMode } from "@src/shared/types";
 
 const mainFlag = window as Window & { __fbxExactMain?: boolean; __fbxHarvestMode?: SearchMode };
@@ -10,24 +12,18 @@ if (!mainFlag.__fbxExactMain) {
 
 function installMainHooks(): void {
   function currentMode(): SearchMode {
-    try {
-      const tab = new URL(window.location.href).searchParams.get("targetTab") || "";
-      if (/buyer/i.test(tab)) {
-        return "buying";
-      }
-      if (/seller/i.test(tab)) {
-        return "selling";
-      }
-    } catch {
-      /* ignore */
-    }
-    return mainFlag.__fbxHarvestMode || "marketplace";
+    return (
+      modeFromHref(window.location.href) ||
+      mainFlag.__fbxHarvestMode ||
+      "marketplace"
+    );
   }
 
   function publishListings(listings: ListingRecord[]): void {
     if (!listings.length) {
       return;
     }
+    console.log(`[fbx] main-listings mode=${currentMode()} count=${listings.length}`);
     window.postMessage({ source: MESSAGE_SOURCE, type: "listings", listings }, "*");
   }
 
@@ -48,6 +44,23 @@ function installMainHooks(): void {
       publishListings(extractInboxThreads(payload, mode));
       return;
     }
+    if (mode === "facebook") {
+      publishListings(extractFacebookPosts(payload));
+      return;
+    }
+    if (
+      /marketplaceInboxBuyerMessageThreads|marketplaceInboxSellerMessageThreads|marketplace_thread_data/i.test(
+        text
+      )
+    ) {
+      const inboxMode = /marketplaceInboxSellerMessageThreads/i.test(text) ? "selling" : "buying";
+      publishListings(extractInboxThreads(payload, inboxMode));
+      return;
+    }
+    if (/serpResponse|SearchPostViewModel|TOP_PUBLIC_POSTS/i.test(text)) {
+      publishListings(extractFacebookPosts(payload));
+      return;
+    }
     publishListings(extractListings(payload));
   }
 
@@ -55,9 +68,17 @@ function installMainHooks(): void {
   window.fetch = async (...args: Parameters<typeof fetch>): Promise<Response> => {
     const response = await originalFetch(...args);
     try {
+      const request = args[0];
+      const requestUrl =
+        typeof request === "string" ? request : request instanceof Request ? request.url : "";
       const clone = response.clone();
       const contentType = clone.headers.get("content-type") || "";
-      if (contentType.includes("application/json") || contentType.includes("text/javascript")) {
+      if (
+        contentType.includes("application/json") ||
+        contentType.includes("text/javascript") ||
+        contentType.includes("application/x-javascript") ||
+        /graphql/i.test(requestUrl)
+      ) {
         void clone.text().then(ingestText).catch(() => undefined);
       }
     } catch {

@@ -14,17 +14,28 @@ function clipPreview(value: string): string {
   return clipText(value, 280);
 }
 
-function renderLoading(root: HTMLElement, detail: string): void {
+function renderLoading(root: HTMLElement, detail: string, partial = false): void {
   const panel = document.createElement("div");
-  panel.className = "loading-panel";
+  panel.className = partial ? "loading-banner" : "loading-panel";
   panel.setAttribute("role", "status");
   panel.setAttribute("aria-live", "polite");
   const spinner = document.createElement("div");
   spinner.className = "loading-spinner";
   spinner.setAttribute("aria-hidden", "true");
   panel.append(spinner);
-  panel.append(textEl("div", "loading-title", "Search running"));
-  panel.append(textEl("p", "loading-detail", detail));
+  const copy = document.createElement("div");
+  copy.className = "loading-copy";
+  copy.append(
+    textEl("div", "loading-title", partial ? "Still loading more results" : "Search running")
+  );
+  copy.append(
+    textEl(
+      "p",
+      "loading-detail",
+      partial ? `${detail} Results below are partial, not final yet.` : detail
+    )
+  );
+  panel.append(copy);
   root.append(panel);
 }
 
@@ -38,10 +49,13 @@ export function renderResults(
   loadingDetail = "Collecting matches from Facebook. Stay on this page."
 ): void {
   root.replaceChildren();
-  root.setAttribute("aria-busy", loading && cards.length === 0 ? "true" : "false");
+  root.setAttribute("aria-busy", loading ? "true" : "false");
   if (loading && cards.length === 0) {
     renderLoading(root, loadingDetail);
     return;
+  }
+  if (loading && cards.length > 0) {
+    renderLoading(root, loadingDetail, true);
   }
 
   for (const card of cards) {
@@ -53,14 +67,20 @@ export function renderResults(
     article.setAttribute("aria-label", `View ${card.title}`);
 
     const photos = card.photos.length ? card.photos : card.photo ? [card.photo] : [];
-    const fallback = card.kind === "listing" ? "No photo" : "Chat";
+    const fallback = card.kind === "listing" || card.kind === "facebook" ? "No photo" : "Chat";
     article.append(buildPhotoCarousel(photos, fallback));
 
     const info = document.createElement("div");
     info.className = "info";
 
-    if (card.kind === "buying" || card.kind === "selling") {
-      info.append(textEl("div", "badge", card.kind === "buying" ? "Buying" : "Selling"));
+    if (card.kind === "buying" || card.kind === "selling" || card.kind === "facebook") {
+      info.append(
+        textEl(
+          "div",
+          "badge",
+          card.kind === "buying" ? "Buying" : card.kind === "selling" ? "Selling" : "Facebook"
+        )
+      );
     }
     if (card.price) {
       info.append(textEl("div", "price", card.price));

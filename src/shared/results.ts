@@ -76,7 +76,14 @@ export function filterListings(
     if (!isUsableListing(listing, mode)) {
       continue;
     }
-    const id = listing.numericId || listing.id;
+    /*
+     * Chat rows must key off the thread id. Several Marketplace chats can share
+     * one item numericId, and collapsing on that hid every Selling card but one.
+     */
+    const id =
+      mode === "buying" || mode === "selling" || mode === "facebook"
+        ? listing.id || listing.numericId
+        : listing.numericId || listing.id;
     if (!id || seen.has(id)) {
       continue;
     }
@@ -96,7 +103,10 @@ export function filterListings(
     ) {
       continue;
     }
-    if (!listingMatchesPriceRanges(listing.price, prices)) {
+    if (
+      (mode === "marketplace" || mode === "facebook") &&
+      !listingMatchesPriceRanges(listing.price, prices)
+    ) {
       continue;
     }
     const openHref = cardHref(listing);
@@ -134,7 +144,7 @@ export function visibleListings(
   matchRegex = "",
   priceRanges = ""
 ): VisibleResult {
-  if (mode === "marketplace") {
+  if (mode === "marketplace" || mode === "facebook") {
     return {
       cards: query
         ? filterListings(listings, query, substring, exclude, href, mode, matchRegex, priceRanges)
@@ -170,36 +180,42 @@ export function searchStatus(
   showingAllChats = false
 ): string {
   const place =
-    mode === "buying" ? "Buying chats" : mode === "selling" ? "Selling chats" : "Market list";
+    mode === "facebook"
+      ? "Facebook"
+      : mode === "buying"
+        ? "Buying chats"
+        : mode === "selling"
+          ? "Selling chats"
+          : "Market list";
   if (loading && total > 0) {
-    if (mode !== "marketplace" && showingAllChats) {
-      return `Still searching ${place} - ${total} chats collected so far.`;
+    if ((mode === "buying" || mode === "selling") && showingAllChats) {
+      return `Loading more ${place} - ${total} so far. These are not final yet.`;
     }
     if (query) {
-      return `Still searching ${place} - ${shown} of ${total} match so far.`;
+      return `Loading more ${place} - ${shown} of ${total} match so far. Keep waiting, more may arrive.`;
     }
-    return `Still searching ${place} - ${total} collected so far.`;
+    return `Loading more ${place} - ${total} so far. These are not final yet.`;
   }
-  if (mode !== "marketplace" && !query) {
+  if ((mode === "buying" || mode === "selling") && !query) {
     if (loading && total === 0) {
-      return `Searching ${place} - scrolling inbox now.`;
+      return `Loading ${place} - scrolling inbox now.`;
     }
     if (total === 0) {
-      return `No chats yet. Use Harvest if Facebook asks you to log in.`;
+      return `Final: no chats yet. Open Facebook and sign in if the inbox looks empty.`;
     }
-    return `Search finished. Showing all ${total} ${place.toLowerCase()}. Type to narrow them down.`;
+    return `Final results. Showing all ${total} ${place.toLowerCase()}. Type to narrow them down.`;
   }
   if (!query) {
     return "Type a search. Results open in a detail modal.";
   }
   if (loading && total === 0) {
-    return `Searching ${place} for "${query}" - collecting results now.`;
+    return `Loading ${place} for "${query}" - collecting the first results now.`;
   }
   if (total === 0) {
-    return `Search finished. No results for "${query}". Use Harvest if Facebook asks you to log in.`;
+    return `Final results. No matches for "${query}". Sign in on Facebook if the page looks empty.`;
   }
   if (showingAllChats) {
-    return `Search finished. No matches for that search. Showing all ${total} ${place.toLowerCase()}.`;
+    return `Final results. No matches for that search. Showing all ${total} ${place.toLowerCase()}.`;
   }
-  return `Search finished. ${shown} of ${total} match. Click a row to view details.`;
+  return `Final results. ${shown} of ${total} match. Click a row to view details.`;
 }

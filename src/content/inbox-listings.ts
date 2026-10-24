@@ -32,13 +32,37 @@ function photosFromRoot(root: HTMLElement): string[] {
   return uniquePhotos(urls);
 }
 
+function onMarketplaceInbox(): boolean {
+  try {
+    return /\/marketplace\/inbox/i.test(window.location.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function threadIdAny(href: string): string {
+  const match = href.match(/\/(?:marketplace|messages)\/t\/([^/?#]+)/i);
+  if (!match?.[1]) {
+    return "";
+  }
+  return decodeURIComponent(match[1]).replace(/^t_/, "");
+}
+
+function marketplaceThreadHref(href: string): string {
+  const id = threadIdAny(href);
+  if (!/^\d{6,}$/.test(id)) {
+    return "";
+  }
+  return `https://www.facebook.com/marketplace/t/${id}/`;
+}
+
 function closestRow(anchor: HTMLElement): HTMLElement {
   let current: HTMLElement | null = anchor;
   let candidate = anchor;
   while (current && current.parentElement && current !== document.body) {
     const parent = current.parentElement;
     const links = parent.querySelectorAll(
-      'a[href*="/marketplace/t/"], a[href*="/marketplace/item/"], a[href*="/marketplace/inbox"]'
+      'a[href*="/marketplace/t/"], a[href*="/messages/t/"], a[href*="/marketplace/item/"], a[href*="/marketplace/inbox"]'
     ).length;
     if (links <= 2 && parent.childElementCount <= 12) {
       candidate = parent;
@@ -112,11 +136,19 @@ function addListing(
 
 function fromAnchors(root: ParentNode, mode: SearchMode, found: Map<string, ListingRecord>): void {
   const kind = kindForMode(mode);
-  const anchors = root.querySelectorAll<HTMLAnchorElement>('a[href*="/marketplace/t/"]');
+  /*
+   * Marketplace inbox rows often use /messages/t/ in the DOM. Rewrite those to
+   * /marketplace/t/ only while we are on the Marketplace inbox page.
+   */
+  const selector = onMarketplaceInbox()
+    ? 'a[href*="/marketplace/t/"], a[href*="/messages/t/"]'
+    : 'a[href*="/marketplace/t/"]';
+  const anchors = root.querySelectorAll<HTMLAnchorElement>(selector);
 
   for (const anchor of anchors) {
-    const href = (anchor.href || "").split("#")[0] || "";
-    if (!href || !/\/marketplace\/t\//i.test(href)) {
+    const raw = (anchor.href || "").split("#")[0] || "";
+    const href = marketplaceThreadHref(raw);
+    if (!href) {
       continue;
     }
     const row = closestRow(anchor);
@@ -134,7 +166,7 @@ function fromAnchors(root: ParentNode, mode: SearchMode, found: Map<string, List
     const photos = photosFromRoot(row);
     addListing(found, {
       id,
-      numericId: listingIdFromHref(href),
+      numericId: listingIdFromHref(href) || threadIdAny(href),
       title,
       description,
       price: "",
@@ -211,7 +243,7 @@ export function listingsFromInbox(
   root: ParentNode = document,
   mode: SearchMode = "buying"
 ): ListingRecord[] {
-  if (mode === "marketplace") {
+  if (mode !== "buying" && mode !== "selling") {
     return [];
   }
   const found = new Map<string, ListingRecord>();

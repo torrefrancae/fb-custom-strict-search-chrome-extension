@@ -17,6 +17,15 @@ export function queryFromDocument(doc: Document, href: string): string {
   ).trim();
 }
 
+export function isFacebookHost(href: string): boolean {
+  try {
+    const host = new URL(href).hostname;
+    return /^(www\.|web\.)?facebook\.com$/i.test(host);
+  } catch {
+    return false;
+  }
+}
+
 export function isMarketplaceUrl(href: string): boolean {
   return /marketplace/i.test(href);
 }
@@ -33,8 +42,16 @@ export function isMarketplaceSearchPath(pathname: string): boolean {
   return pathname.includes("/marketplace/") && !isMarketplaceItemPath(pathname);
 }
 
+export function isFacebookSearchPath(pathname: string): boolean {
+  return /\/search\/(posts|top|latest|people|pages|groups|videos)\/?/i.test(pathname);
+}
+
 export function isHarvestablePath(pathname: string): boolean {
-  return isMarketplaceSearchPath(pathname) || isMarketplaceInboxPath(pathname);
+  return (
+    isMarketplaceSearchPath(pathname) ||
+    isMarketplaceInboxPath(pathname) ||
+    isFacebookSearchPath(pathname)
+  );
 }
 
 export function marketplaceSearchUrl(origin: string, query: string): string {
@@ -43,7 +60,13 @@ export function marketplaceSearchUrl(origin: string, query: string): string {
   return url.toString();
 }
 
-export function marketplaceInboxUrl(origin: string, mode: Exclude<SearchMode, "marketplace">): string {
+export function facebookSearchUrl(origin: string, query: string): string {
+  const url = new URL("/search/posts/", origin);
+  url.searchParams.set("q", query);
+  return url.toString();
+}
+
+export function marketplaceInboxUrl(origin: string, mode: "buying" | "selling"): string {
   const url = new URL("/marketplace/inbox", origin);
   url.searchParams.set("targetTab", mode === "buying" ? "BUYER" : "SELLER");
   return url.toString();
@@ -53,7 +76,29 @@ export function harvestUrl(origin: string, mode: SearchMode, query: string): str
   if (mode === "buying" || mode === "selling") {
     return marketplaceInboxUrl(origin, mode);
   }
+  if (mode === "facebook") {
+    return facebookSearchUrl(origin, query);
+  }
   return marketplaceSearchUrl(origin, query);
+}
+
+export function modeFromHref(href: string): SearchMode | "" {
+  try {
+    const url = new URL(href);
+    const inbox = inboxTabFromHref(href);
+    if (inbox) {
+      return inbox;
+    }
+    if (isFacebookSearchPath(url.pathname)) {
+      return "facebook";
+    }
+    if (isMarketplaceSearchPath(url.pathname) || isMarketplaceItemPath(url.pathname)) {
+      return "marketplace";
+    }
+  } catch {
+    /* ignore bad urls */
+  }
+  return "";
 }
 
 export function inboxTabFromHref(href: string): SearchMode | "" {

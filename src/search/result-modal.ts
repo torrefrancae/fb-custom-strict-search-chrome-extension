@@ -25,6 +25,9 @@ function kindLabel(kind: ResultCard["kind"]): string {
   if (kind === "selling") {
     return "Selling chat";
   }
+  if (kind === "facebook") {
+    return "Facebook post";
+  }
   return "Marketplace listing";
 }
 
@@ -69,7 +72,10 @@ export function createResultModal(host: HTMLElement): ResultModalApi {
   const paintCard = (card: ResultCard, query: string, substring: boolean, loadingDetail: boolean): void => {
     body.replaceChildren();
     const photos = card.photos.length ? card.photos : card.photo ? [card.photo] : [];
-    const media = buildPhotoCarousel(photos, card.kind === "listing" ? "No photo" : "Chat");
+    const media = buildPhotoCarousel(
+      photos,
+      card.kind === "listing" || card.kind === "facebook" ? "No photo" : "Chat"
+    );
     media.classList.add("modal-media");
     body.append(media);
 
@@ -89,8 +95,16 @@ export function createResultModal(host: HTMLElement): ResultModalApi {
       info.append(note);
     } else if (loadingDetail) {
       info.append(textEl("div", "note muted", "Loading description..."));
-    } else if (card.kind === "listing") {
-      info.append(textEl("div", "note muted", "No description found for this listing."));
+    } else if (card.kind === "listing" || card.kind === "facebook") {
+      info.append(
+        textEl(
+          "div",
+          "note muted",
+          card.kind === "facebook"
+            ? "No post text found for this result."
+            : "No description found for this listing."
+        )
+      );
     } else {
       info.append(textEl("div", "note muted", "Chat preview from your inbox harvest."));
     }

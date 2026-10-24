@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { threadIdFromHref } from "@src/shared/listing";
 import {
+  facebookSearchUrl,
   harvestUrl,
   inboxTabFromHref,
+  isFacebookSearchPath,
   isMarketplaceInboxPath,
   isMarketplaceSearchPath,
   isMarketplaceUrl,
@@ -29,6 +31,22 @@ describe("isMarketplaceSearchPath", () => {
     assert.equal(isMarketplaceSearchPath("/marketplace/search/"), true);
     assert.equal(isMarketplaceSearchPath("/marketplace/"), true);
     assert.equal(isMarketplaceSearchPath("/marketplace/item/123"), false);
+  });
+});
+
+describe("facebook search helpers", () => {
+  it("builds facebook posts search urls", () => {
+    assert.equal(
+      facebookSearchUrl("https://www.facebook.com", "honda civic"),
+      "https://www.facebook.com/search/posts/?q=honda+civic"
+    );
+    assert.equal(
+      harvestUrl("https://www.facebook.com", "facebook", "iphone"),
+      "https://www.facebook.com/search/posts/?q=iphone"
+    );
+    assert.equal(isFacebookSearchPath("/search/posts/"), true);
+    assert.equal(isFacebookSearchPath("/search/top"), true);
+    assert.equal(isFacebookSearchPath("/marketplace/search/"), false);
   });
 });
 

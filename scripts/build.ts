@@ -90,6 +90,7 @@ copyFileSync(join(src, "manifest.json"), join(dist, "manifest.json"));
 copyFileSync(join(src, "popup", "popup.html"), join(dist, "popup", "popup.html"));
 copyFileSync(join(src, "popup", "popup.css"), join(dist, "popup", "popup.css"));
 copyFileSync(join(src, "content", "overlay.css"), join(dist, "content", "overlay.css"));
+copyFileSync(join(src, "content", "agent-shell.css"), join(dist, "content", "agent-shell.css"));
 copyFileSync(join(src, "search", "search.html"), join(dist, "search", "search.html"));
 copyFileSync(join(src, "search", "search.css"), join(dist, "search", "search.css"));
 

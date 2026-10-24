@@ -10,17 +10,22 @@
     <header class="top">
       <div class="brand-row">
         <h1>Facebook AI Agent</h1>
-        <p class="tagline">2.0 - search listings and inbox chats without leaving this page</p>
+        <p class="tagline">2.0 - same UI on the live Facebook tab while that page keeps scrolling</p>
       </div>
       <nav class="tabs" role="tablist" aria-label="Search scope">
+        <button type="button" class="tab" role="tab" data-mode="facebook" aria-selected="false" id="tab-facebook">
+          <span class="tab-label">Facebook</span>
+        </button>
         <button type="button" class="tab" role="tab" data-mode="marketplace" aria-selected="true" id="tab-market">
-          Market list
+          <span class="tab-label">Market list</span>
         </button>
         <button type="button" class="tab" role="tab" data-mode="buying" aria-selected="false" id="tab-buying">
-          Buying chats
+          <span class="tab-label">Buying chats</span>
+          <span class="tab-meta" id="tab-buying-meta" data-state="idle" aria-live="polite"></span>
         </button>
         <button type="button" class="tab" role="tab" data-mode="selling" aria-selected="false" id="tab-selling">
-          Selling chats
+          <span class="tab-label">Selling chats</span>
+          <span class="tab-meta" id="tab-selling-meta" data-state="idle" aria-live="polite"></span>
         </button>
       </nav>
       <form id="form" class="form" autocomplete="off">
@@ -37,7 +42,9 @@
           Contains
         </label>
         <button type="submit">Search</button>
-        <button id="focus-market" type="button" class="ghost">Harvest</button>
+        <button id="clear-params" type="button" class="ghost" title="Clear exclude, regex, prices, and contains">
+          Clear params
+        </button>
       </form>
       <div class="advanced-bar" id="advanced-bar" data-state="idle">
         <div class="advanced-copy">

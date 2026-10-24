@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Facebook AI Agent 2.0",
-  "version": "0.2.0",
-  "description": "Facebook AI Agent 2.0 - search Marketplace and inbox chats from a dedicated page, keeping only the matches you asked for.",
+  "version": "2.0.0",
+  "description": "Facebook AI Agent 2.0 - search Facebook posts, Marketplace, and inbox chats in a fullscreen agent panel on the live Facebook tab while that page keeps scrolling.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -32,12 +32,31 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' https: data:;"
   },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "search/search.html",
+        "search/search.css",
+        "search/search.js",
+        "content/agent-shell.css",
+        "icons/*"
+      ],
+      "matches": [
+        "https://www.facebook.com/*",
+        "https://web.facebook.com/*",
+        "https://facebook.com/*"
+      ]
+    }
+  ],
   "content_scripts": [
     {
       "matches": [
         "https://www.facebook.com/*marketplace*",
         "https://web.facebook.com/*marketplace*",
-        "https://facebook.com/*marketplace*"
+        "https://facebook.com/*marketplace*",
+        "https://www.facebook.com/search/*",
+        "https://web.facebook.com/search/*",
+        "https://facebook.com/search/*"
       ],
       "js": ["content/main.js"],
       "run_at": "document_start",
@@ -47,7 +66,10 @@
       "matches": [
         "https://www.facebook.com/*marketplace*",
         "https://web.facebook.com/*marketplace*",
-        "https://facebook.com/*marketplace*"
+        "https://facebook.com/*marketplace*",
+        "https://www.facebook.com/search/*",
+        "https://web.facebook.com/search/*",
+        "https://facebook.com/search/*"
       ],
       "js": ["content/isolated.js"],
       "run_at": "document_idle"

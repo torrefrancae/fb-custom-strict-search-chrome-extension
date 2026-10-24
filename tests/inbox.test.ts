@@ -78,4 +78,55 @@ describe("extractInboxThreads", () => {
     );
     assert.equal(rows.length, 0);
   });
+
+  it("reads marketplace inbox buyer graphql threads", () => {
+    const rows = extractInboxThreads(
+      {
+        data: {
+          viewer: {
+            marketplaceInboxBuyerMessageThreads: {
+              edges: [
+                {
+                  node: {
+                    __typename: "MessageThread",
+                    id: "bWVzc2FnZV90aHJlYWQ6MjE0MzMzMDQ3OTU1MzkxNA",
+                    thread_key: { thread_fbid: "2143330479553914" },
+                    marketplace_thread_data: {
+                      messageable_item: {
+                        __typename: "GroupCommerceProductItem",
+                        marketplace_listing_title: "Unused old stock tires",
+                        id: "922478656848904",
+                        primary_listing_photo: {
+                          image: { uri: "https://example.com/tires.jpg" }
+                        }
+                      }
+                    },
+                    messages: {
+                      edges: [{ node: { snippet: "how much for one?" } }]
+                    },
+                    other_participants: {
+                      edges: [
+                        {
+                          node: {
+                            messaging_actor: { name: "Martus Harley", short_name: "Harley" }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "buying"
+    );
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.id, "2143330479553914");
+    assert.match(rows[0]?.title || "", /tires/i);
+    assert.match(rows[0]?.party || "", /Harley/);
+    assert.match(rows[0]?.href || "", /\/marketplace\/t\/2143330479553914\//);
+    assert.match(rows[0]?.description || "", /how much/i);
+  });
 });

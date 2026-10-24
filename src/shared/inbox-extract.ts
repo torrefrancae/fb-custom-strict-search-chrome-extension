@@ -13,6 +13,9 @@ function asText(value: unknown): string {
     if (typeof record.name === "string") {
       return record.name.trim();
     }
+    if (typeof record.short_name === "string") {
+      return record.short_name.trim();
+    }
   }
   return "";
 }
@@ -20,6 +23,28 @@ function asText(value: unknown): string {
 function numericIdFrom(value: string): string {
   const match = value.match(/(\d{6,})/);
   return match ? match[1] : "";
+}
+
+function decodeId(value: string): string {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+  if (/^\d{6,}$/.test(raw) || raw.includes("marketplace_thread") || raw.includes("message_thread")) {
+    return raw;
+  }
+  try {
+    const decoded =
+      typeof atob === "function"
+        ? atob(raw)
+        : Buffer.from(raw, "base64").toString("utf8");
+    if (decoded && /thread|message|\d{6,}/i.test(decoded)) {
+      return decoded;
+    }
+  } catch {
+    /* not base64 */
+  }
+  return raw;
 }
 
 function uriFromPhotoNode(candidate: unknown): string {
@@ -82,7 +107,44 @@ function listingTitle(node: Record<string, unknown>): string {
   );
 }
 
+function firstEdgeNode(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const edges = (value as Record<string, unknown>).edges;
+  if (!Array.isArray(edges) || !edges[0] || typeof edges[0] !== "object") {
+    return null;
+  }
+  const node = (edges[0] as Record<string, unknown>).node;
+  return node && typeof node === "object" ? (node as Record<string, unknown>) : null;
+}
+
+function marketplaceListingNode(record: Record<string, unknown>): Record<string, unknown> | null {
+  if (record.listing && typeof record.listing === "object") {
+    return record.listing as Record<string, unknown>;
+  }
+  const threadData =
+    record.marketplace_thread_data && typeof record.marketplace_thread_data === "object"
+      ? (record.marketplace_thread_data as Record<string, unknown>)
+      : null;
+  if (threadData?.messageable_item && typeof threadData.messageable_item === "object") {
+    return threadData.messageable_item as Record<string, unknown>;
+  }
+  return null;
+}
+
 function partyName(node: Record<string, unknown>): string {
+  const participant = firstEdgeNode(node.other_participants);
+  if (participant) {
+    const actor =
+      participant.messaging_actor && typeof participant.messaging_actor === "object"
+        ? (participant.messaging_actor as Record<string, unknown>)
+        : participant;
+    const fromActor = asText(actor.short_name) || asText(actor.name) || asText(actor);
+    if (fromActor) {
+      return fromActor;
+    }
+  }
   const keys = ["other_user", "buyer", "seller", "participant", "messaging_actor", "user"];
   for (const key of keys) {
     const value = node[key];
@@ -91,9 +153,66 @@ function partyName(node: Record<string, unknown>): string {
       return name;
     }
     if (value && typeof value === "object") {
-      const nested = asText((value as Record<string, unknown>).name);
+      const nested =
+        asText((value as Record<string, unknown>).short_name) ||
+        asText((value as Record<string, unknown>).name);
       if (nested) {
         return nested;
+      }
+    }
+  }
+  const threadData =
+    node.marketplace_thread_data && typeof node.marketplace_thread_data === "object"
+      ? (node.marketplace_thread_data as Record<string, unknown>)
+      : null;
+  if (threadData?.seller && typeof threadData.seller === "object") {
+    const seller = asText((threadData.seller as Record<string, unknown>).name);
+    if (seller) {
+      return seller;
+    }
+  }
+  return "";
+}
+
+function snippetText(record: Record<string, unknown>): string {
+  const message = firstEdgeNode(record.messages);
+  if (message) {
+    const fromMessage = asText(message.snippet) || asText(message.text) || asText(message.message);
+    if (fromMessage) {
+      return fromMessage;
+    }
+  }
+  return (
+    asText(record.snippet) ||
+    asText(record.message_snippet) ||
+    asText(record.latest_message) ||
+    asText(record.text) ||
+    ""
+  );
+}
+
+function threadIdFromRecord(record: Record<string, unknown>): string {
+  const key = record.thread_key;
+  if (key && typeof key === "object") {
+    const threadFbid = (key as Record<string, unknown>).thread_fbid;
+    if (typeof threadFbid === "string" || typeof threadFbid === "number") {
+      const id = numericIdFrom(String(threadFbid));
+      if (id) {
+        return id;
+      }
+    }
+  }
+  for (const candidate of [
+    record.thread_key,
+    record.thread_id,
+    record.marketplace_thread_id,
+    record.id
+  ]) {
+    if (typeof candidate === "string" || typeof candidate === "number") {
+      const decoded = decodeId(String(candidate));
+      const id = numericIdFrom(decoded);
+      if (id) {
+        return id;
       }
     }
   }
@@ -113,12 +232,13 @@ function threadHref(rawThreadId: string): string {
 function looksLikeMarketplaceListing(node: Record<string, unknown>): boolean {
   const typeName = String(node.__typename || "");
   return (
-    /marketplace.*listing/i.test(typeName) ||
+    /marketplace.*listing|GroupCommerceProductItem/i.test(typeName) ||
     Boolean(
       node.marketplace_listing_title ||
         node.listing_price ||
         node.primary_listing_photo ||
-        node.marketplace_listing_id
+        node.marketplace_listing_id ||
+        node.__isMarketplaceListingRenderable
     )
   );
 }
@@ -128,25 +248,18 @@ function looksLikeThread(node: Record<string, unknown>): boolean {
   if (/marketplace.*thread/i.test(typeName) || /commerce.*thread/i.test(typeName)) {
     return true;
   }
-  if (node.marketplace_thread_id) {
+  if (node.marketplace_thread_id || node.marketplace_thread_data) {
     return true;
   }
-  /*
-   * Messenger group chats also carry bare thread_key values. Only accept a
-   * thread when it is tied to a marketplace listing payload.
-   */
-  const listing =
-    node.listing && typeof node.listing === "object"
-      ? (node.listing as Record<string, unknown>)
-      : null;
-  if (!listing || !looksLikeMarketplaceListing(listing)) {
-    return false;
+  const listing = marketplaceListingNode(node);
+  if (listing && looksLikeMarketplaceListing(listing)) {
+    return Boolean(node.thread_key || node.messages || node.other_participants || typeName === "MessageThread");
   }
-  return Boolean(node.snippet || node.latest_message || node.message_snippet || node.thread_key);
+  return false;
 }
 
 export function extractInboxThreads(payload: unknown, mode: SearchMode): ListingRecord[] {
-  if (mode === "marketplace") {
+  if (mode !== "buying" && mode !== "selling") {
     return [];
   }
 
@@ -166,38 +279,21 @@ export function extractInboxThreads(payload: unknown, mode: SearchMode): Listing
 
     const record = node as Record<string, unknown>;
     if (looksLikeThread(record)) {
-      const listingNode =
-        record.listing && typeof record.listing === "object"
-          ? (record.listing as Record<string, unknown>)
-          : record;
+      const listingNode = marketplaceListingNode(record) || record;
       const title = listingTitle(listingNode) || listingTitle(record);
       const party = partyName(record);
-      const snippet =
-        asText(record.snippet) ||
-        asText(record.message_snippet) ||
-        asText(record.latest_message) ||
-        asText(record.text) ||
-        "";
-      const rawId = String(
-        record.thread_key || record.thread_id || record.marketplace_thread_id || record.id || ""
-      );
-      const href = threadHref(rawId);
-      if (!href || !isThreadHref(href)) {
-        for (const value of Object.values(record)) {
-          visit(value);
-        }
-        return;
-      }
-      const itemId =
-        numericIdFrom(String(listingNode.id || listingNode.listing_id || "")) ||
-        numericIdFrom(String(record.listing_id || ""));
-      if (title || party) {
-        const id = numericIdFrom(rawId) || rawId;
+      const snippet = snippetText(record);
+      const threadId = threadIdFromRecord(record);
+      const href = threadHref(threadId);
+      if (href && isThreadHref(href) && (title || party)) {
+        const itemId =
+          numericIdFrom(String(listingNode.id || listingNode.listing_id || "")) ||
+          numericIdFrom(String(record.listing_id || ""));
         const photos = uniquePhotos(pickPhotos(listingNode), pickPhotos(record));
         found.set(
-          id,
+          threadId,
           normalizeListing({
-            id,
+            id: threadId,
             numericId: itemId,
             title: title || party || "Marketplace chat",
             description: [snippet, party].filter(Boolean).join(" · "),

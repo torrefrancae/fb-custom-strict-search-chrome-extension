@@ -1,12 +1,12 @@
 {
   "name": "fb-ai-agent-chrome-extension",
-  "version": "0.2.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Facebook AI Agent 2.0 - Marketplace search and inbox chat hunting from a dedicated Chrome extension page.",
+  "description": "Facebook AI Agent 2.0 - Marketplace/Facebook harvest on one live tab with the agent UI in a fullscreen modal iframe while the page scrolls.",
   "type": "module",
   "scripts": {
     "build": "tsx scripts/build.ts",
-    "test": "tsx --test tests/match.test.ts tests/listing.test.ts tests/float.test.ts tests/dashboard.test.ts tests/query.test.ts tests/results.test.ts tests/inbox.test.ts tests/price-range.test.ts",
+    "test": "tsx --test tests/match.test.ts tests/listing.test.ts tests/float.test.ts tests/dashboard.test.ts tests/query.test.ts tests/results.test.ts tests/inbox.test.ts tests/price-range.test.ts tests/facebook-search.test.ts",
     "test:browser": "tsx tests/puppeteer/run.ts",
     "test:browser:headed": "tsx tests/puppeteer/run.ts --headed --screenshots --html-report",
     "test:session": "tsx tests/puppeteer/session.ts"

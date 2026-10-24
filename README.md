@@ -1,10 +1,8 @@
 # Facebook AI Agent 2.0
 
-Chrome extension (Manifest V3) for Marketplace search and inbox chat hunting from a dedicated agent page.
+Chrome extension (Manifest V3) that helps you search Facebook posts, Marketplace listings, and Marketplace inbox chats from one panel.
 
-You search on the agent page. The extension opens Facebook Marketplace in a background tab to collect listings, then lists only the matches on the agent page. Facebook's own search screen is left alone. Opening an item opens the normal Marketplace item page, with no filter panel.
-
-The older reply-only agent lives under `../archive/fb-ai-agent-v1-chrome-extension`.
+In v2, the toolbar icon opens a Marketplace tab and shows the agent UI in a large modal on that same page. Facebook keeps scrolling underneath while matches appear in the panel. You stay on one tab instead of bouncing between a separate extension page and Facebook.
 
 Search `honda cbr 150` and a Honda CBR without `150`, a CBR 150 without Honda, or a CBR 250 will drop out. With Contains on, `ninja 250` also keeps `ninja z250sl`. A size like `48gb` also matches `48 GB`. Prices like `PHP250,000` do not count as a `250` match. Don't include words such as `parts, wrecked` hide those listings.
 
@@ -12,26 +10,25 @@ Search `honda cbr 150` and a Honda CBR without `150`, a CBR 150 without Honda, o
 
 ## Features
 
-- **Separate agent page**: the toolbar icon opens Facebook AI Agent, not Facebook
-- **Buying and Selling chats**: search your Marketplace inbox chats by item or person
+- **Live-tab agent panel**: ~90% modal with the same search UI, embedded on the Facebook tab
+- **Facebook + Market list + Buying/Selling chats**: switch scopes from the top tabs
+- **Same-tab search**: Enter refreshes or navigates the current Facebook tab (no extra tab spam)
 - **All-word match**: every token must appear in the title, the description, or split across both
-- **Don't include**: comma-separated words hide a listing if any of those words match (`parts, wrecked`)
+- **Don't include**: comma-separated words hide a listing if any of those words match
+- **Clear params**: one click clears exclude, regex, prices, and Contains (keeps the search box)
+- **Advanced filters**: optional match regex and price ranges on collected results
 - **Openable results only**: empty teasers and dead item ids are dropped
-- **Detail modal**: clicks stay on the agent page; Marketplace descriptions load only when you open a row
-- **Order does not matter**: `cbr honda 150` matches the same listings as `honda cbr 150`
-- **Contains or whole word**: Contains is on by default, so `ninja 250` keeps `ninja z250sl`
-- **Prices ignored**: `PHP250,000` does not satisfy a `250` token
-- **Memory sizes**: `48gb` matches `48GB` and `48 GB`, but not a 48-core GPU with 16GB RAM
+- **Detail modal**: open a row for photos and description without leaving the panel
+- **Contains or whole word**: Contains is on by default
 - **Highlights** matching words on kept cards
-- **Item view stays clean**: clicking a result opens the Marketplace item with no agent panel
 
 ## Install (unpacked)
 
 1. Clone this repo and install dependencies:
 
 ```bash
-git clone https://github.com/torrefrancae/fb-ai-agent-chrome-extension.git
-cd fb-ai-agent-chrome-extension
+git clone https://github.com/torrefrancae/fb-custom-strict-search-chrome-extension.git
+cd fb-custom-strict-search-chrome-extension
 npm install
 npm run build
 ```
@@ -39,36 +36,31 @@ npm run build
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode**.
 4. Click **Load unpacked** and select the `dist` folder (not the repo root).
-5. Click the extension icon to open Facebook AI Agent.
+5. Click the extension icon to open the agent panel on Marketplace.
 
 Reload the extension on `chrome://extensions` after each `npm run build`.
 
 ## How it works
 
-1. You type a search on the agent page, pick Marketplace, Buying chats, or Selling chats, plus optional Don't include words.
-2. The extension opens Marketplace search or the Buying/Selling inbox in a background tab.
-3. A page-world script reads listing or chat payloads from Marketplace network responses and visible cards.
-4. Matching results are drawn on the agent page. Facebook's own grid is not hidden or rewritten.
-5. Don't include drops a result if any comma-separated word matches.
-6. Click a row to open details in a modal on the agent page. Marketplace item text is fetched only then. Buying and Selling chats stay in the modal too.
+1. Click the extension icon (or search from the panel). A Facebook Marketplace tab opens or refreshes.
+2. The agent UI loads in a modal iframe on that tab while the page scrolls and collects results.
+3. Pick Facebook, Market list, Buying chats, or Selling chats, then type a query plus optional filters.
+4. Matching results render in the panel. Click a row for the detail modal.
+5. Clear params resets filters without wiping the search box.
 
-If Facebook asks you to log in, use **Harvest** to show the background Marketplace tab, then come back to the agent page.
+If Facebook asks you to sign in, sign in on that same tab, then search again.
 
 ## Project layout
 
 ```text
 src/
-  background.ts          Service worker: search page, harvest tab, listing relay
-  search/                Standalone search page
-  content/               Marketplace collector (no on-page filter UI)
-  shared/                Tokenizer, match rules, listing extraction
+  background.ts          Service worker: tab session, search relay, hunt progress
+  search/                Agent UI (also embedded in the live-tab modal)
+  content/               Page collectors + agent-shell overlay
+  shared/                Match rules, listing extraction, settings
   popup/                 Optional launcher
 scripts/build.ts         Bundles TypeScript into dist/
-tests/match.test.ts      Unit tests for the matcher
-tests/results.test.ts    Unit tests for the search-page result list
-tests/listing.test.ts    Unit tests for payload parsing
-tests/float.test.ts      Unit tests for panel edge snap
-tests/puppeteer/         Optional live Chrome tests
+tests/                   Unit tests and optional live Puppeteer checks
 ```
 
 ## Scripts
@@ -127,6 +119,7 @@ npm run test:session -- --query="honda cbr 150" --screenshots --html-report
 ```
 
 HTML reports land in `.idea/report/` (also gitignored). Open `smart-search-browser-test.html` after a screenshot run.
+
 ## Tests
 
 ```bash

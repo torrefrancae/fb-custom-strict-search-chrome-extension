@@ -73,8 +73,30 @@ export function isThreadHref(href: string): boolean {
   }
 }
 
+export function isPostHref(href: string): boolean {
+  if (!href) {
+    return false;
+  }
+  try {
+    const url = new URL(href, "https://www.facebook.com");
+    if (!/facebook\.com$/i.test(url.hostname) && !/\.facebook\.com$/i.test(url.hostname)) {
+      return false;
+    }
+    return (
+      /\/posts\//i.test(url.pathname) ||
+      /\/permalink\.php$/i.test(url.pathname) ||
+      /\/photo\/?$/i.test(url.pathname) ||
+      /\/story\.php$/i.test(url.pathname) ||
+      /\/reel\//i.test(url.pathname) ||
+      /\/videos\//i.test(url.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function isOpenableHref(href: string): boolean {
-  return isItemHref(href) || isThreadHref(href);
+  return isItemHref(href) || isThreadHref(href) || isPostHref(href);
 }
 
 export function isUsableListing(listing: ListingRecord, mode: SearchMode = "marketplace"): boolean {
@@ -96,6 +118,13 @@ export function isUsableListing(listing: ListingRecord, mode: SearchMode = "mark
     return listing.photos.some(isHttpsPhoto) || isHttpsPhoto(listing.photo);
   }
 
+  if (mode === "facebook") {
+    if (!isPostHref(listing.href)) {
+      return false;
+    }
+    return listing.photos.some(isHttpsPhoto) || isHttpsPhoto(listing.photo) || listing.description.length >= 24;
+  }
+
   return isThreadHref(listing.href);
 }
 
@@ -105,6 +134,9 @@ export function kindForMode(mode: SearchMode): ListingKind {
   }
   if (mode === "selling") {
     return "selling";
+  }
+  if (mode === "facebook") {
+    return "facebook";
   }
   return "listing";
 }

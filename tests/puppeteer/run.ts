@@ -918,6 +918,11 @@ async function runChatFixture(mode: "buying" | "selling"): Promise<void> {
 }
 
 async function runLiveInbox(mode: "buying" | "selling"): Promise<string> {
+  if (sharedLiveBrowser) {
+    await sharedLiveBrowser.close().catch(() => undefined);
+    sharedLiveBrowser = null;
+    await waitForProfileIdle();
+  }
   const browser = await launchSessionBrowser();
   try {
     const loginPage = await browser.newPage();
@@ -942,17 +947,27 @@ async function runLiveInbox(mode: "buying" | "selling"): Promise<string> {
     );
     await page.waitForSelector(".loading-panel", { timeout: 5000 }).catch(() => undefined);
     await snap(page, `${mode}-live-loading`, `Live ${mode} shows search-running status`);
-    await new Promise((resolve) => setTimeout(resolve, 20000));
+    await page.waitForFunction(
+      (expected) => {
+        const meta = document.querySelector(`#tab-${expected}-meta`);
+        const text = meta?.textContent || "";
+        const count = Number((text.match(/(\d+)/) || [])[1] || 0);
+        return count > 0 || document.querySelectorAll("[data-listing-id]").length > 0;
+      },
+      { timeout: 90000 },
+      mode
+    ).catch(() => undefined);
     await page.bringToFront();
     await page.waitForFunction(
       () => document.querySelectorAll("[data-listing-id]").length > 0,
-      { timeout: 60000 }
+      { timeout: 90000 }
     ).catch(() => undefined);
     await new Promise((resolve) => setTimeout(resolve, 1000));
     const cards = await page.$$("[data-listing-id]");
+    const tabMeta = await page.$eval(`#tab-${mode}-meta`, (node) => node.textContent || "").catch(() => "");
     await snap(page, `${mode}-live-list`, `Live ${mode} chats on Facebook AI Agent`);
     if (!cards.length) {
-      return `${mode}-empty`;
+      return `${mode}-empty meta=${tabMeta}`;
     }
     const searchUrl = page.url();
     await cards[0]?.click();
@@ -966,6 +981,88 @@ async function runLiveInbox(mode: "buying" | "selling"): Promise<string> {
     await snap(page, `${mode}-live-modal`, `Live ${mode} chat modal stays in Facebook AI Agent`);
     await page.click(".modal-close");
     return `${mode}-cards:${cards.length}`;
+  } finally {
+    await closeBrowser(browser);
+  }
+}
+
+async function runLiveFacebookSearchPage(): Promise<string> {
+  const browser = await launchSessionBrowser();
+  try {
+    const loginPage = await browser.newPage();
+    const loggedIn = await waitForFacebookLogin(loginPage);
+    if (!loggedIn) {
+      return "facebook-login-wall";
+    }
+    await loginPage.close().catch(() => undefined);
+
+    const origin = await extensionOrigin(browser);
+    const page = await browser.newPage();
+    if (!headed) {
+      await page.setViewport({ width: 1400, height: 900 });
+    }
+    await page.goto(`${origin}/search/search.html`, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.waitForSelector("#query");
+    await page.click("#tab-facebook");
+    await page.waitForFunction(() => {
+      const tab = document.querySelector('.tab[data-mode="facebook"]');
+      return tab?.getAttribute("aria-selected") === "true";
+    });
+    const tabOrder = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLButtonElement>(".tab")].map((button) => button.dataset.mode || "")
+    );
+    if (tabOrder[0] !== "facebook" || tabOrder[1] !== "marketplace") {
+      throw new Error(`facebook tab order wrong: ${tabOrder.join(",")}`);
+    }
+    await page.click("#query", { clickCount: 3 });
+    await page.type("#query", "honda civic");
+    await page.click("#exclude", { clickCount: 3 });
+    await page.keyboard.press("Backspace");
+    await page.click("button[type=submit]");
+    await page.waitForFunction(() => {
+      const status = document.querySelector("#status")?.textContent || "";
+      const selected = document.querySelector('.tab[aria-selected="true"]')?.textContent || "";
+      return /Facebook/i.test(selected) && (/Searching Facebook/i.test(status) || document.querySelector(".loading-panel"));
+    }, { timeout: 8000 });
+    await snap(page, "facebook-loading", "Facebook tab shows search-running status");
+    await new Promise((resolve) => setTimeout(resolve, 20000));
+    const pages = await browser.pages();
+    const harvest = pages.find(
+      (item) => /facebook\.com\/search\/posts/i.test(item.url()) && /honda|civic/i.test(item.url())
+    );
+    if (harvest) {
+      await harvest.waitForNetworkIdle({ idleTime: 500, timeout: 8000 }).catch(() => undefined);
+      await snap(harvest, "facebook-harvest-tab", "Harvest tab opened for Facebook search");
+    }
+    await page.bringToFront();
+    await page.waitForFunction(
+      () => document.querySelectorAll("[data-listing-id]").length > 0,
+      { timeout: 90000 }
+    ).catch(() => undefined);
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await snap(page, "facebook-search-page", "Facebook AI Agent page after a live Facebook hunt");
+    const stats = await page.evaluate(() => ({
+      status: document.querySelector("#status")?.textContent || "",
+      cards: document.querySelectorAll("[data-listing-id]").length,
+      tab: document.querySelector('.tab[aria-selected="true"]')?.textContent?.trim() || "",
+      badge: document.querySelector(".result-row .badge")?.textContent || "",
+      harvested: ((window as Window & { __fbxListings?: { title: string; kind: string }[] }).__fbxListings || []).length,
+      harvestHref: ""
+    }));
+    stats.harvestHref = harvest?.url() || "";
+    console.log("facebook-search-stats", JSON.stringify(stats, null, 2));
+    if (isLoginWall(stats.harvestHref)) {
+      return "facebook-login-wall";
+    }
+    if (stats.cards > 0) {
+      const first = await page.$("[data-listing-id]");
+      await first?.click();
+      await page.waitForSelector(".modal-backdrop:not([hidden])", { timeout: 8000 });
+      await snap(page, "facebook-modal", "Facebook post opens in modal");
+      await page.click(".modal-close");
+      return `facebook-cards:${stats.cards}`;
+    }
+    return "facebook-empty";
   } finally {
     await closeBrowser(browser);
   }
@@ -1012,6 +1109,13 @@ const searchResult = useBetaProfile
       return "search-error";
     });
 
+const facebookSearchResult = useBetaProfile
+  ? "skipped"
+  : await runLiveFacebookSearchPage().catch((error: Error) => {
+      console.error(error.message);
+      return "facebook-error";
+    });
+
 const buyingLive = useBetaProfile
   ? "skipped"
   : await runLiveInbox("buying").catch((error: Error) => {
@@ -1050,6 +1154,7 @@ console.log(`buying-fixture=${buyingFixture}`);
 console.log(`selling-fixture=${sellingFixture}`);
 console.log(`live=${liveResult}`);
 console.log(`search=${searchResult}`);
+console.log(`facebook-search=${facebookSearchResult}`);
 console.log(`buying-live=${buyingLive}`);
 console.log(`selling-live=${sellingLive}`);
 console.log(`beta=${betaResult}`);
@@ -1059,6 +1164,14 @@ if (
   buyingFixture === "fail" ||
   sellingFixture === "fail" ||
   liveResult === "live-altered" ||
+  String(searchResult).includes("empty") ||
+  String(searchResult).includes("error") ||
+  String(facebookSearchResult).includes("empty") ||
+  String(facebookSearchResult).includes("error") ||
+  String(buyingLive).includes("empty") ||
+  String(sellingLive).includes("empty") ||
+  String(buyingLive).includes("error") ||
+  String(sellingLive).includes("error") ||
   String(betaResult).startsWith("beta-error") ||
   betaResult === "beta-login-wall"
 ) {

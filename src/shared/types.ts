@@ -1,6 +1,6 @@
-export type SearchMode = "marketplace" | "buying" | "selling";
+export type SearchMode = "facebook" | "marketplace" | "buying" | "selling";
 
-export type ListingKind = "listing" | "buying" | "selling";
+export type ListingKind = "facebook" | "listing" | "buying" | "selling";
 
 export type ListingRecord = {
   id: string;
@@ -62,6 +62,16 @@ export type StartHarvestMessage = {
   mode: SearchMode;
 };
 
+export type ShowAgentShellMessage = {
+  source: typeof RUNTIME_SOURCE;
+  type: "show-agent-shell";
+};
+
+export type HideAgentShellMessage = {
+  source: typeof RUNTIME_SOURCE;
+  type: "hide-agent-shell";
+};
+
 export type HarvestListingsMessage = {
   source: typeof RUNTIME_SOURCE;
   type: "harvest-listings";
@@ -87,6 +97,47 @@ export type RequestSnapshotMessage = {
 export type FocusHarvestMessage = {
   source: typeof RUNTIME_SOURCE;
   type: "focus-harvest";
+};
+
+export type WarmChatCachesMessage = {
+  source: typeof RUNTIME_SOURCE;
+  type: "warm-chat-caches";
+};
+
+export type RequestCacheProgressMessage = {
+  source: typeof RUNTIME_SOURCE;
+  type: "request-cache-progress";
+};
+
+export type RequestChatSnapshotMessage = {
+  source: typeof RUNTIME_SOURCE;
+  type: "request-chat-snapshot";
+  mode: "buying" | "selling";
+};
+
+export type CacheLaneStatus = "idle" | "caching" | "done";
+
+export type CacheLaneProgress = {
+  count: number;
+  status: CacheLaneStatus;
+};
+
+export type CacheProgressMessage = {
+  source: typeof RUNTIME_SOURCE;
+  type: "cache-progress";
+  buying: CacheLaneProgress;
+  selling: CacheLaneProgress;
+};
+
+export type HuntPhase = "running" | "done";
+
+export type HuntProgressMessage = {
+  source: typeof RUNTIME_SOURCE;
+  type: "hunt-progress";
+  mode: SearchMode;
+  query: string;
+  status: HuntPhase;
+  count: number;
 };
 
 export type FetchImageMessage = {
@@ -119,9 +170,16 @@ export type FetchListingDetailResponse = {
 export type RuntimeMessage =
   | StartSearchMessage
   | StartHarvestMessage
+  | ShowAgentShellMessage
+  | HideAgentShellMessage
   | HarvestListingsMessage
   | SnapshotMessage
   | RequestSnapshotMessage
   | FocusHarvestMessage
+  | WarmChatCachesMessage
+  | RequestCacheProgressMessage
+  | RequestChatSnapshotMessage
+  | CacheProgressMessage
+  | HuntProgressMessage
   | FetchImageMessage
   | FetchListingDetailMessage;

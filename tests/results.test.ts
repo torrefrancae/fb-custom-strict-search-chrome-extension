@@ -225,6 +225,32 @@ describe("filterListings", () => {
     assert.equal(miss.cards.length, 2);
     assert.equal(miss.showingAll, true);
   });
+
+  it("keeps separate selling chats that share one item numericId", () => {
+    const chats = [
+      listing({
+        id: "100200300",
+        numericId: "1499308081930636",
+        title: "Unused tires",
+        party: "Buyer A",
+        href: "https://www.facebook.com/marketplace/t/100200300/",
+        kind: "selling"
+      }),
+      listing({
+        id: "200300400",
+        numericId: "1499308081930636",
+        title: "Unused tires",
+        party: "Buyer B",
+        href: "https://www.facebook.com/marketplace/t/200300400/",
+        kind: "selling"
+      })
+    ];
+    const cards = filterListings(chats, "", true, "", "https://www.facebook.com/", "selling");
+    assert.deepEqual(
+      cards.map((card) => card.id),
+      ["100200300", "200300400"]
+    );
+  });
 });
 
 describe("isUsableListing", () => {
@@ -358,12 +384,12 @@ describe("clipText", () => {
 describe("searchStatus", () => {
   it("explains the empty, loading, and match states", () => {
     assert.match(searchStatus("", false, 0, 0), /Type a search/);
-    assert.match(searchStatus("", false, 4, 4, "buying"), /Showing all 4|Search finished/);
-    assert.match(searchStatus("civic", true, 0, 0, "buying"), /Searching Buying chats/);
-    assert.match(searchStatus("iphone", true, 0, 0, "marketplace"), /Searching Market list/);
-    assert.match(searchStatus("iphone", true, 3, 8, "marketplace"), /Still searching Market list/);
-    assert.match(searchStatus("zzzz", false, 4, 4, "selling", true), /Showing all 4|Search finished/);
+    assert.match(searchStatus("", false, 4, 4, "buying"), /Final results|Showing all 4/);
+    assert.match(searchStatus("civic", true, 0, 0, "buying"), /Loading Buying chats/);
+    assert.match(searchStatus("iphone", true, 0, 0, "marketplace"), /Loading Market list/);
+    assert.match(searchStatus("iphone", true, 3, 8, "marketplace"), /Loading more Market list|not final|Keep waiting/);
+    assert.match(searchStatus("zzzz", false, 4, 4, "selling", true), /Final results|Showing all 4/);
     assert.match(searchStatus("civic", false, 2, 5), /2 of 5/);
-    assert.match(searchStatus("civic", false, 2, 5), /detail modal|view details|Search finished/i);
+    assert.match(searchStatus("civic", false, 2, 5), /Final results|view details/i);
   });
 });

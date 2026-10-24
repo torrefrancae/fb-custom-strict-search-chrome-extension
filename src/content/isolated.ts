@@ -1,3 +1,4 @@
+import { hideAgentShell, showAgentShell } from "@src/content/agent-shell";
 import { setNoiseHidden } from "@src/content/ads";
 import { revealAllCards } from "@src/content/cards";
 import { startHarvestScroll } from "@src/content/harvest";
@@ -5,14 +6,15 @@ import { listingsFromInbox } from "@src/content/inbox-listings";
 import { listingsFromCards } from "@src/content/page-listings";
 import { ListingStore } from "@src/content/store";
 import { fetchListingDetail } from "@src/shared/fetch-listing-detail";
+import { extractFacebookPosts } from "@src/shared/facebook-extract";
 import { extractListingsFromDocument } from "@src/shared/hydrate";
 import { extractInboxThreads } from "@src/shared/inbox-extract";
 import { parseFacebookBody, usableListings } from "@src/shared/listing";
 import {
-  inboxTabFromHref,
+  isFacebookHost,
   isHarvestablePath,
   isMarketplaceItemPath,
-  isMarketplaceUrl
+  modeFromHref
 } from "@src/shared/query";
 import {
   MESSAGE_SOURCE,
@@ -42,13 +44,13 @@ function bootIsolated(): void {
   }
 
   function currentMode(): SearchMode {
-    return inboxTabFromHref(window.location.href) || mode;
+    return modeFromHref(window.location.href) || mode;
   }
 
   function onHarvestPage(): boolean {
     return (
       document.documentElement.hasAttribute("data-fbx-fixture") ||
-      (isMarketplaceUrl(window.location.href) && isHarvestablePath(window.location.pathname))
+      (isFacebookHost(window.location.href) && isHarvestablePath(window.location.pathname))
     );
   }
 
@@ -61,12 +63,17 @@ function bootIsolated(): void {
       return;
     }
     const activeMode = currentMode();
+    const listings = usableListings(store.all(), activeMode);
+    if (!listings.length) {
+      return;
+    }
+    console.log(`[fbx] harvest-publish mode=${activeMode} count=${listings.length}`);
     const runtime = (globalThis as { chrome?: typeof chrome }).chrome?.runtime;
     runtime?.sendMessage(
       {
         source: RUNTIME_SOURCE,
         type: "harvest-listings",
-        listings: usableListings(store.all(), activeMode === "marketplace" ? "marketplace" : activeMode),
+        listings,
         href: window.location.href,
         mode: activeMode
       },
@@ -82,6 +89,19 @@ function bootIsolated(): void {
     scriptCount = count;
     if (activeMode === "marketplace") {
       store.merge(extractListingsFromDocument(document));
+      return;
+    }
+    if (activeMode === "facebook") {
+      for (const script of document.querySelectorAll("script")) {
+        const text = script.textContent || "";
+        if (!/serpResponse|SearchPostViewModel|permalink_url|post_id/i.test(text)) {
+          continue;
+        }
+        const parsed = parseFacebookBody(text);
+        if (parsed) {
+          store.merge(extractFacebookPosts(parsed));
+        }
+      }
       return;
     }
     for (const script of document.querySelectorAll("script")) {
@@ -100,7 +120,7 @@ function bootIsolated(): void {
     const activeMode = currentMode();
     if (activeMode === "buying" || activeMode === "selling") {
       store.merge(listingsFromInbox(document, activeMode));
-    } else {
+    } else if (activeMode === "marketplace") {
       store.merge(listingsFromCards());
     }
     hydrateScripts(activeMode);
@@ -138,6 +158,7 @@ function bootIsolated(): void {
       return;
     }
     if (event.data.type === "listings") {
+      console.log(`[fbx] isolated-listings count=${event.data.listings.length}`);
       store.merge(event.data.listings);
       scheduleRefresh();
     }
@@ -154,10 +175,34 @@ function bootIsolated(): void {
     if (message?.source !== RUNTIME_SOURCE) {
       return;
     }
+    if (message.type === "show-agent-shell") {
+      showAgentShell();
+      return;
+    }
+    if (message.type === "hide-agent-shell") {
+      hideAgentShell();
+      return;
+    }
     if (message.type === "start-harvest") {
-      store.clear();
-      scriptCount = -1;
-      setHarvest(true, message.mode || "marketplace");
+      const nextMode = message.mode || "marketplace";
+      /*
+       * Inbox GraphQL often lands before the first start-harvest flips mode off
+       * marketplace. Keep those rows so ping/reload does not wipe a full cache.
+       */
+      const keepChat =
+        (nextMode === "buying" || nextMode === "selling") && store.size() > 0;
+      if (!keepChat && !(stopScroll && mode === nextMode)) {
+        store.clear();
+        scriptCount = -1;
+      }
+      setHarvest(true, nextMode);
+      /*
+       * Search harvest tabs always get the agent modal. Chat warm tabs only show
+       * it when focused so background inbox caching stays invisible.
+       */
+      if (nextMode === "marketplace" || nextMode === "facebook" || !document.hidden) {
+        showAgentShell();
+      }
       return;
     }
     if (message.type === "fetch-listing-detail") {

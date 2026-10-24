@@ -1,6 +1,6 @@
-import { isMarketplaceSearchPath, isMarketplaceInboxPath } from "@src/shared/query";
+import { isFacebookSearchPath, isMarketplaceSearchPath, isMarketplaceInboxPath } from "@src/shared/query";
 
-const MAX_TICKS = 90;
+const MAX_TICKS = 160;
 const GAP_MS = 900;
 
 function scrollTargets(): HTMLElement[] {
@@ -21,7 +21,11 @@ export function startHarvestScroll(): () => void {
   let ticks = 0;
   const id = window.setInterval(() => {
     const path = window.location.pathname;
-    if (!isMarketplaceSearchPath(path) && !isMarketplaceInboxPath(path)) {
+    if (
+      !isMarketplaceSearchPath(path) &&
+      !isMarketplaceInboxPath(path) &&
+      !isFacebookSearchPath(path)
+    ) {
       return;
     }
     ticks += 1;
@@ -30,7 +34,11 @@ export function startHarvestScroll(): () => void {
     }
 
     const step = Math.max(420, Math.round(window.innerHeight * 0.85));
-    const targets = isMarketplaceInboxPath(path) ? scrollTargets() : [];
+    /*
+     * Marketplace search also uses nested scroll panes. Window scroll alone often
+     * does nothing until the tab is focused, which made Final look done too early.
+     */
+    const targets = scrollTargets();
     if (targets.length) {
       for (const node of targets) {
         node.scrollTop = Math.min(node.scrollHeight, node.scrollTop + step);
